@@ -6,6 +6,7 @@ import {
   Cog,
   Fuel,
   Gauge,
+  Package,
   Scale,
   Settings2,
 } from 'lucide-react';
@@ -18,6 +19,7 @@ import {
   NIGERIAN_RIDER_GEAR,
   RidingGearItem,
   formatMoney,
+  isTricycle,
 } from '../data/motorcycles';
 import { PaintedBikeImage } from './PaintedBikeImage';
 import { StudioImage } from './StudioImage';
@@ -59,38 +61,77 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
     window.setTimeout(() => setJustAdded(false), 1400);
   };
 
-  const specBoxes = [
-    {
-      label: 'Engine',
-      value: activeBike.specs.engine,
-      Icon: Cog,
-    },
-    {
-      label: 'Power',
-      value: activeBike.specs.powerTorque,
-      Icon: Gauge,
-    },
-    {
-      label: 'Gearbox',
-      value: activeBike.specs.transmission,
-      Icon: Settings2,
-    },
-    {
-      label: 'Fuel Tank',
-      value: activeBike.specs.fuelTank,
-      Icon: Fuel,
-    },
-    {
-      label: 'Weight',
-      value: activeBike.specs.weightSeat,
-      Icon: Scale,
-    },
-    {
-      label: 'Condition',
-      value: activeBike.specs.conditionLabel,
-      Icon: BadgeCheck,
-    },
-  ];
+  const activeIsTricycle = isTricycle(activeBike);
+
+  const specBoxes = activeIsTricycle
+    ? [
+        {
+          label: 'Engine',
+          value: activeBike.specs.engine,
+          Icon: Cog,
+        },
+        {
+          label: 'Power & Torque',
+          value: activeBike.specs.powerTorque,
+          Icon: Gauge,
+        },
+        {
+          label: 'Fuel System',
+          value:
+            activeBike.specs.fuelSystem ??
+            activeBike.fuelType ??
+            activeBike.specs.fuelTank,
+          Icon: Fuel,
+        },
+        {
+          label: 'Transmission',
+          value: activeBike.specs.transmission,
+          Icon: Settings2,
+        },
+        {
+          label: 'Capacity / Payload',
+          value:
+            activeBike.specs.capacityPayload ?? activeBike.specs.weightSeat,
+          Icon: Package,
+        },
+        {
+          label: 'Weight / Speed',
+          value: activeBike.specs.weightSpeed ?? activeBike.specs.weightSeat,
+          Icon: Scale,
+        },
+      ]
+    : [
+        {
+          label: 'Engine',
+          value: activeBike.specs.engine,
+          Icon: Cog,
+        },
+        {
+          label: 'Power',
+          value: activeBike.specs.powerTorque,
+          Icon: Gauge,
+        },
+        {
+          label: 'Gearbox',
+          value: activeBike.specs.transmission,
+          Icon: Settings2,
+        },
+        {
+          label: 'Fuel Tank',
+          value: activeBike.specs.fuelTank,
+          Icon: Fuel,
+        },
+        {
+          label: 'Weight',
+          value: activeBike.specs.weightSeat,
+          Icon: Scale,
+        },
+        {
+          label: 'Condition',
+          value: activeBike.specs.conditionLabel,
+          Icon: BadgeCheck,
+        },
+      ];
 
   const colorList =
     activeBike.colorOptions && activeBike.colorOptions.length > 0
@@ -219,9 +260,14 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
             <div>
               <p className="text-[12.5px] leading-[1.45] text-[#52525B]">
                 <strong className="font-semibold text-[#18181B]">
-                  Your bike, your style
+                  {activeIsTricycle
+                    ? 'Your keke, your fleet'
+                    : 'Your bike, your style'}
                 </strong>{' '}
-                — choose the factory colors that define your ride across Nigeria.
+                —{' '}
+                {activeIsTricycle
+                  ? 'choose factory canopy & body colors for commercial routes across Nigeria.'
+                  : 'choose the factory colors that define your ride across Nigeria.'}
               </p>
               <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F3F3F5] text-[11px] font-semibold text-[#18181B] max-w-full">
                 <span
@@ -229,7 +275,8 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
                   style={{ backgroundColor: selectedColor.hex }}
                 />
                 <span className="truncate">
-                  Color: {selectedColor.name}
+                  {activeIsTricycle ? 'Canopy / Body' : 'Color'}:{' '}
+                  {selectedColor.name}
                 </span>
               </div>
             </div>
@@ -246,11 +293,19 @@ export const BentoDashboard: React.FC<BentoDashboardProps> = ({
             </div>
           </div>
 
-          {/* Center Front-Angle Preview Thumbnail */}
-          <div className="w-[100px] sm:w-[114px] h-[142px] shrink-0 flex items-center justify-center overflow-hidden">
+          {/* Center Preview Thumbnail */}
+          <div
+            className={`${
+              activeIsTricycle
+                ? 'w-[126px] sm:w-[138px] h-[132px]'
+                : 'w-[100px] sm:w-[114px] h-[142px]'
+            } shrink-0 flex items-center justify-center overflow-hidden`}
+          >
             {!frontError ? (
               <PaintedBikeImage
-                src={FRONT_CUSTOMIZER_IMAGE}
+                src={
+                  activeIsTricycle ? activeBike.image : FRONT_CUSTOMIZER_IMAGE
+                }
                 colorImages={activeBike.colorImages}
                 selectedColor={selectedColor}
                 alt={`${activeBike.brand} ${activeBike.model} in ${selectedColor.name}`}

@@ -6,7 +6,9 @@ import {
   CurrencyCode,
   FRONT_CUSTOMIZER_IMAGE,
   Motorcycle,
+  VehicleSegmentFilter,
   formatMoney,
+  isTricycle,
 } from '../data/motorcycles';
 import { PaintedBikeImage } from './PaintedBikeImage';
 
@@ -20,6 +22,8 @@ interface HeroStageProps {
   bikes: Motorcycle[];
   activeBike: Motorcycle;
   activeIndex: number;
+  vehicleSegment: VehicleSegmentFilter;
+  onChangeVehicleSegment: (segment: VehicleSegmentFilter) => void;
   selectedColor: ColorOption;
   onSelectColor: (color: ColorOption) => void;
   currency: CurrencyCode;
@@ -34,6 +38,8 @@ export const HeroStage: React.FC<HeroStageProps> = ({
   bikes,
   activeBike,
   activeIndex,
+  vehicleSegment,
+  onChangeVehicleSegment,
   selectedColor,
   onSelectColor,
   currency,
@@ -59,6 +65,8 @@ export const HeroStage: React.FC<HeroStageProps> = ({
   };
 
   const isBrandNew = activeBike.condition === 'Brand New';
+  const activeIsTricycle = isTricycle(activeBike);
+  const isCngFuel = activeBike.fuelType === 'CNG + Petrol Bi-Fuel';
   const availableColors =
     activeBike.colorOptions && activeBike.colorOptions.length > 0
       ? activeBike.colorOptions
@@ -92,6 +100,12 @@ export const HeroStage: React.FC<HeroStageProps> = ({
     }
   };
 
+  const segmentOptions: Array<{ id: VehicleSegmentFilter; label: string }> = [
+    { id: 'all', label: 'All Vehicles' },
+    { id: 'motorcycle', label: 'Motorcycles' },
+    { id: 'tricycle', label: 'Tricycles (Keke)' },
+  ];
+
   const angleButtons: Array<{ id: HeroCameraAngle; label: string }> = [
     { id: 'hero-34', label: '3/4 Hero' },
     { id: 'side', label: 'Side' },
@@ -103,10 +117,39 @@ export const HeroStage: React.FC<HeroStageProps> = ({
   ];
 
   return (
-    <section className="relative px-4 sm:px-6 xl:px-8 pt-4 sm:pt-3 pb-6 sm:pb-4 space-y-5 sm:space-y-2">
+    <section className="relative px-4 sm:px-6 xl:px-8 pt-3 sm:pt-2 pb-6 sm:pb-4 space-y-5 sm:space-y-3">
+      {/* Top-Level Vehicle Segment Switcher */}
+      <div className="flex items-center justify-start md:justify-center">
+        <div
+          role="tablist"
+          aria-label="Filter showroom by vehicle type"
+          className="inline-flex items-center gap-1 p-1 rounded-full bg-white/90 border border-black/[0.05] shadow-[0_2px_12px_rgba(0,0,0,0.04)] overflow-x-auto no-scrollbar max-w-full"
+        >
+          {segmentOptions.map((seg) => {
+            const active = vehicleSegment === seg.id;
+            return (
+              <button
+                key={seg.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => onChangeVehicleSegment(seg.id)}
+                className={`px-3.5 sm:px-4 py-1.5 rounded-full text-[12px] sm:text-[12.5px] font-semibold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-[#18181B] text-white shadow-xs'
+                    : 'text-zinc-600 hover:text-[#18181B]'
+                }`}
+              >
+                {seg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Mobile Single-Column Spacious Header (< md) */}
       <div className="md:hidden flex flex-col items-start gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span
             className={`inline-flex items-center px-3 py-1 rounded-full text-[11px] font-semibold tracking-tight ${
               isBrandNew
@@ -116,6 +159,17 @@ export const HeroStage: React.FC<HeroStageProps> = ({
           >
             {isBrandNew ? 'Brand New' : 'Foreign Used / Tokunbo'}
           </span>
+          {activeBike.fuelType && (
+            <span
+              className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                isCngFuel
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-white text-[#18181B] border border-black/[0.08]'
+              }`}
+            >
+              {activeBike.fuelType}
+            </span>
+          )}
           <span className="text-[13px] font-bold tracking-wide text-[#DC2626]">
             {activeBike.brand}
           </span>
@@ -153,6 +207,17 @@ export const HeroStage: React.FC<HeroStageProps> = ({
             >
               {isBrandNew ? 'Brand New • 0 km' : 'Foreign Used (Tokunbo)'}
             </span>
+            {activeBike.fuelType && (
+              <span
+                className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                  isCngFuel
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-white text-[#18181B] border border-black/[0.08]'
+                }`}
+              >
+                {activeBike.fuelType}
+              </span>
+            )}
             {activeBike.stockStatus && activeBike.stockStatus !== 'In Stock' && (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-[#DC2626] border border-red-200">
                 {activeBike.stockStatus}
@@ -169,7 +234,8 @@ export const HeroStage: React.FC<HeroStageProps> = ({
                 style={{ backgroundColor: selectedColor.hex }}
               />
               <span>
-                Color: {selectedColor.name} •{' '}
+                {activeIsTricycle ? 'Canopy / Body' : 'Color'}:{' '}
+                {selectedColor.name} •{' '}
                 {selectedColor.surchargeNGN === 0
                   ? 'Included'
                   : formatMoney(
@@ -235,7 +301,7 @@ export const HeroStage: React.FC<HeroStageProps> = ({
             onClick={onExploreByPrice}
             className="mt-1 text-[13px] text-[#71717A] hover:text-[#18181B] underline decoration-zinc-300 underline-offset-4 transition-colors cursor-pointer"
           >
-            Explore bikes by price
+            Explore financing plans
           </button>
         </div>
       </div>
@@ -311,8 +377,14 @@ export const HeroStage: React.FC<HeroStageProps> = ({
           </button>
         )}
 
-        {/* Active Centerpiece Motorcycle Stage (100% Width on Mobile) */}
-        <div className="relative w-full max-w-[680px] mx-auto flex flex-col items-center">
+        {/* Active Centerpiece Vehicle Stage (100% Width on Mobile) */}
+        <div
+          className={`relative w-full mx-auto flex flex-col items-center ${
+            activeIsTricycle
+              ? 'max-w-[440px] md:max-w-[540px]'
+              : 'max-w-[680px]'
+          }`}
+        >
           {/* Subtle Studio Pedestal Ring & Soft Shadow */}
           {effectiveAngle !== '3d' && (
             <>
@@ -359,10 +431,14 @@ export const HeroStage: React.FC<HeroStageProps> = ({
                   onOpenDetail(activeBike);
                 }
               }}
-              className="group relative w-full h-[270px] sm:h-[340px] md:h-[400px] py-2 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B] rounded-3xl flex items-center justify-center"
+              className={`group relative w-full h-[270px] sm:h-[340px] md:h-[400px] ${
+                activeIsTricycle ? 'px-3 py-3 sm:px-5' : 'py-2'
+              } cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B] rounded-3xl flex items-center justify-center`}
             >
               <PaintedBikeImage
-                src={FRONT_CUSTOMIZER_IMAGE}
+                src={
+                  activeIsTricycle ? activeBike.image : FRONT_CUSTOMIZER_IMAGE
+                }
                 colorImages={activeBike.colorImages}
                 selectedColor={selectedColor}
                 alt={`${activeBike.brand} ${activeBike.model} front view in ${selectedColor.name}`}
@@ -520,7 +596,7 @@ export const HeroStage: React.FC<HeroStageProps> = ({
         <div className="md:hidden w-full bg-white px-4 py-3 rounded-2xl shadow-[0_2px_14px_rgba(0,0,0,0.03)] border border-black/[0.04] flex items-center justify-between gap-3">
           <div className="min-w-0">
             <span className="text-[13px] font-semibold text-[#18181B] block leading-tight">
-              Paint Color
+              {activeIsTricycle ? 'Canopy / Body' : 'Paint Color'}
             </span>
             <span className="text-[11px] font-medium text-[#71717A] block truncate mt-0.5 tabular-nums">
               {selectedColor.name} ·{' '}

@@ -26,7 +26,8 @@
             "Qlink",
             "Daylong",
             "Haojue",
-            "Yamaha"
+            "Yamaha",
+            "Piaggio"
           ]
         },
         "category": {
@@ -35,8 +36,18 @@
             "Commuter / Commercial",
             "Dispatch / Off-Road",
             "Ladies' Cubs & Scooters",
-            "600cc Power Bikes"
+            "600cc Power Bikes",
+            "Tricycles (Passenger)",
+            "Tricycles (Heavy-Duty / Cargo)"
           ]
+        },
+        "vehicleType": {
+          "type": "string",
+          "enum": ["motorcycle", "tricycle"]
+        },
+        "fuelType": {
+          "type": "string",
+          "enum": ["Petrol", "CNG + Petrol Bi-Fuel", "Diesel / CNG"]
         },
         "condition": {
           "type": "string",
@@ -363,7 +374,7 @@
         },
         "orderType": {
           "type": "string",
-          "enum": ["Motorcycle", "Spare Parts & Gear"]
+          "enum": ["Motorcycle", "Tricycle", "Spare Parts & Gear"]
         },
         "createdAt": {
           "type": "string",

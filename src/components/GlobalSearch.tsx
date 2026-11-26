@@ -14,16 +14,19 @@ import {
   MOTORCYCLES,
   Motorcycle,
   formatMoney,
+  isTricycle,
 } from '../data/motorcycles';
 import { PartVariant, SPARE_PARTS, SparePart } from '../data/spareParts';
 
 const POPULAR_SEARCHES = [
+  'TVS King',
+  'CNG Keke',
+  'Bajaj RE',
+  'Piaggio Cargo',
   'Bajaj Boxer',
-  'TVS HLX',
   '600cc',
   'Carburetor',
   'Chain & Sprocket',
-  'Engine Oil',
 ];
 
 const NGN_PER_USD = 1520;
@@ -170,15 +173,21 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
     const tokens = trimmedQuery.toLowerCase().split(/\s+/).filter(Boolean);
 
     const bikes = motorcycles.filter((bike) => {
+      const vehicleKeywords = isTricycle(bike)
+        ? 'tricycle keke napep 3-wheeler three-wheeler cargo commercial'
+        : 'motorcycle motorbike two-wheeler';
       const haystack = [
         bike.brand,
         ...(bike.brandTags ?? []),
         bike.model,
         bike.category,
         bike.condition,
+        bike.fuelType ?? '',
+        vehicleKeywords,
         bike.subtitle,
         bike.specs.engine,
         bike.specs.transmission,
+        bike.specs.capacityPayload ?? '',
       ]
         .join(' ')
         .toLowerCase();
@@ -329,7 +338,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                 <section className="space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <h3 className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-                      Motorcycles
+                      Motorcycles &amp; Tricycles (Keke)
                     </h3>
                     <span className="text-[11px] font-semibold text-zinc-500 tabular-nums">
                       {matchedBikes.length}{' '}
@@ -339,6 +348,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                   <div className="space-y-1.5">
                     {matchedBikes.slice(0, 6).map((bike) => {
                       const isBrandNew = bike.condition === 'Brand New';
+                      const resultIsTricycle = isTricycle(bike);
                       const ccLabel = extractEngineCc(bike.specs.engine);
                       const priceStr = formatMoney(
                         bike.priceUSD,
@@ -401,6 +411,17 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                                   ? 'Brand New'
                                   : 'Foreign Used / Tokunbo'}
                               </span>
+                              {resultIsTricycle && (
+                                <span
+                                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                    bike.fuelType === 'CNG + Petrol Bi-Fuel'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                      : 'bg-zinc-100 text-zinc-700'
+                                  }`}
+                                >
+                                  {bike.fuelType ?? 'Tricycle'}
+                                </span>
+                              )}
                             </div>
                           </div>
 
@@ -409,7 +430,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
                               {priceStr}
                             </div>
                             <div className="text-[10px] font-medium text-[#DC2626] opacity-0 group-hover:opacity-100 transition-opacity">
-                              View bike →
+                              {resultIsTricycle ? 'View tricycle →' : 'View bike →'}
                             </div>
                           </div>
                         </button>
@@ -564,8 +585,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
             setQuery(e.target.value);
             setIsOpen(true);
           }}
-          placeholder="Search bikes, cc, or spare parts..."
-          aria-label="Search bikes, cc, or spare parts"
+          placeholder="Search bikes, keke, CNG, cc, or spare parts..."
+          aria-label="Search bikes, keke, CNG, cc, or spare parts"
           className="w-full h-10 pl-9 pr-8 rounded-full bg-white border border-zinc-200 text-[12.5px] text-[#18181B] placeholder:text-zinc-400 shadow-[0_2px_10px_rgba(0,0,0,0.03)] focus:outline-none focus:border-[#18181B] focus:ring-2 focus:ring-[#18181B]/10 transition-all"
         />
         {query ? (
@@ -600,8 +621,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({
               setQuery(e.target.value);
               setIsOpen(true);
             }}
-            placeholder="Search bikes, cc, or spare parts..."
-            aria-label="Search bikes, cc, or spare parts"
+            placeholder="Search bikes, keke, CNG, or spare parts..."
+            aria-label="Search bikes, keke, CNG, or spare parts"
             className="w-full h-11 pl-10 pr-10 rounded-full bg-white border border-zinc-200 text-[13.5px] text-[#18181B] placeholder:text-zinc-400 shadow-[0_6px_20px_rgba(0,0,0,0.05)] focus:outline-none focus:border-[#18181B] focus:ring-2 focus:ring-[#18181B]/10"
           />
           <button

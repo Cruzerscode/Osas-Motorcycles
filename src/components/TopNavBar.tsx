@@ -44,6 +44,7 @@ interface TopNavBarProps {
     quantity: number,
     variant?: PartVariant
   ) => void;
+  activeBikeIsTricycle?: boolean;
 }
 
 export const TopNavBar: React.FC<TopNavBarProps> = ({
@@ -65,6 +66,7 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
   onSelectMotorcycleSearch,
   onSelectPartSearch,
   onAddPartToBag,
+  activeBikeIsTricycle = false,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -466,7 +468,9 @@ export const TopNavBar: React.FC<TopNavBarProps> = ({
                 }}
                 className="w-full min-h-[44px] py-3 rounded-full bg-[#18181B] text-white text-[13.5px] font-semibold cursor-pointer"
               >
-                Order Selected Bike
+                {activeBikeIsTricycle
+                  ? 'Order Selected Tricycle'
+                  : 'Order Selected Bike'}
               </button>
               <button
                 type="button"

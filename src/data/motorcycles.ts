@@ -1,5 +1,11 @@
 export type CurrencyCode = 'NGN' | 'USD';
 
+export type VehicleType = 'motorcycle' | 'tricycle';
+
+export type VehicleSegmentFilter = 'all' | 'motorcycle' | 'tricycle';
+
+export type FuelType = 'Petrol' | 'CNG + Petrol Bi-Fuel' | 'Diesel / CNG';
+
 export type BrandName =
   | 'Bajaj'
   | 'TVS'
@@ -9,13 +15,16 @@ export type BrandName =
   | 'Qlink'
   | 'Daylong'
   | 'Haojue'
-  | 'Yamaha';
+  | 'Yamaha'
+  | 'Piaggio';
 
 export type CategoryName =
   | 'Commuter / Commercial'
   | 'Dispatch / Off-Road'
   | "Ladies' Cubs & Scooters"
-  | '600cc Power Bikes';
+  | '600cc Power Bikes'
+  | 'Tricycles (Passenger)'
+  | 'Tricycles (Heavy-Duty / Cargo)';
 
 export type ConditionType = 'Brand New' | 'Foreign Used (Tokunbo)';
 
@@ -48,6 +57,8 @@ export interface Motorcycle {
   brand: BrandName;
   brandTags?: BrandName[];
   category: CategoryName;
+  vehicleType?: VehicleType;
+  fuelType?: FuelType;
   condition: ConditionType;
   subtitle: string;
   priceNGN: number;
@@ -63,6 +74,9 @@ export interface Motorcycle {
     fuelTank: string;
     weightSeat: string;
     conditionLabel: string;
+    fuelSystem?: string;
+    capacityPayload?: string;
+    weightSpeed?: string;
   };
   defaultGearId: string;
   inStock: boolean;
@@ -90,6 +104,17 @@ export const IMG_YAMAHA_R6 =
   '/src/assets/images/bike_yamaha_yzf_r1_1795695275648.jpg';
 export const IMG_HONDA_CBR600 =
   '/src/assets/images/bike_honda_cbr1000rrr_1795695278139.jpg';
+
+export const IMG_TRICYCLE_TVS_KING =
+  '/src/assets/images/tricycle_tvs_king_1795714298371.jpg';
+export const IMG_TRICYCLE_BAJAJ_RE =
+  '/src/assets/images/tricycle_bajaj_re_1795714299300.jpg';
+export const IMG_TRICYCLE_PIAGGIO_CITY =
+  '/src/assets/images/tricycle_piaggio_city_1795714300001.jpg';
+export const IMG_TRICYCLE_PIAGGIO_CARGO =
+  '/src/assets/images/tricycle_piaggio_cargo_1795714299500.jpg';
+export const IMG_TRICYCLE_DAYLONG_CARGO =
+  '/src/assets/images/tricycle_daylong_cargo_1795714300372.jpg';
 
 export const FRONT_CUSTOMIZER_IMAGE =
   '/src/assets/images/bike_front_customizer_1795695279604.jpg';
@@ -181,10 +206,55 @@ export const COLOR_OPTIONS: ColorOption[] = [
   },
 ];
 
+export const TRICYCLE_COLOR_OPTIONS: ColorOption[] = [
+  {
+    id: 'tricycle-yellow',
+    name: 'Commercial Yellow',
+    hex: '#EAB308',
+    surchargeNGN: 0,
+    surchargeUSD: 0,
+    frontFilter: 'hue-rotate(0deg) saturate(1.05) brightness(1)',
+  },
+  {
+    id: 'tricycle-blue',
+    name: 'Royal Blue',
+    hex: '#1E3A8A',
+    surchargeNGN: 35000,
+    surchargeUSD: toUSD(35000),
+    frontFilter: 'hue-rotate(175deg) saturate(1.15) brightness(0.84)',
+  },
+  {
+    id: 'tricycle-green',
+    name: 'Emerald Green',
+    hex: '#059669',
+    surchargeNGN: 40000,
+    surchargeUSD: toUSD(40000),
+    frontFilter: 'hue-rotate(92deg) saturate(1.12) brightness(0.92)',
+  },
+  {
+    id: 'tricycle-red',
+    name: 'Racing Red',
+    hex: '#DC2626',
+    surchargeNGN: 25000,
+    surchargeUSD: toUSD(25000),
+    frontFilter: 'hue-rotate(-42deg) saturate(1.35) brightness(0.92)',
+  },
+  {
+    id: 'tricycle-white',
+    name: 'Pure White',
+    hex: '#E4E4E7',
+    surchargeNGN: 45000,
+    surchargeUSD: toUSD(45000),
+    frontFilter: 'saturate(0.08) brightness(1.12) contrast(1.04)',
+    isLightSwatch: true,
+  },
+];
+
 export const BRANDS: Array<'All' | BrandName> = [
   'All',
   'Bajaj',
   'TVS',
+  'Piaggio',
   'Honda',
   'Hero',
   'Suzuki',
@@ -200,6 +270,8 @@ export const CATEGORIES: Array<'All' | CategoryName> = [
   'Dispatch / Off-Road',
   "Ladies' Cubs & Scooters",
   '600cc Power Bikes',
+  'Tricycles (Passenger)',
+  'Tricycles (Heavy-Duty / Cargo)',
 ];
 
 export const MOTORCYCLES: Motorcycle[] = [
@@ -688,7 +760,247 @@ export const MOTORCYCLES: Motorcycle[] = [
     defaultGearId: 'gear-dot-helmet',
     inStock: true,
   },
+  {
+    id: 'tvs-king-deluxe-petrol',
+    model: 'King Deluxe / Deluxe Plus (Petrol)',
+    brand: 'TVS',
+    category: 'Tricycles (Passenger)',
+    vehicleType: 'tricycle',
+    fuelType: 'Petrol',
+    condition: 'Brand New',
+    subtitle: 'Nigeria’s #1 liquid-cooled commercial passenger keke napep',
+    priceNGN: 4600841,
+    priceUSD: toUSD(4600841),
+    marketRangeNGN: '₦4,600,841 (Brand New)',
+    image: IMG_TRICYCLE_TVS_KING,
+    defaultColorId: 'tricycle-yellow',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '199.26 cc 4-Stroke Liquid-Cooled',
+      powerTorque: '7.5 kW (10.1 hp) / 15.5 Nm',
+      transmission: '4-Forward + 1-Reverse (Electric & Hand Start)',
+      fuelTank: 'Petrol',
+      weightSeat: '4-Seater Passenger · 347 kg • 65 km/h',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Petrol',
+      capacityPayload: '4-Seater Passenger',
+      weightSpeed: '347 kg • 65 km/h',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'tvs-king-deluxe-cng',
+    model: 'King Deluxe CNG (Factory-Fitted)',
+    brand: 'TVS',
+    category: 'Tricycles (Passenger)',
+    vehicleType: 'tricycle',
+    fuelType: 'CNG + Petrol Bi-Fuel',
+    condition: 'Brand New',
+    subtitle: 'Factory-fitted CNG + Petrol bi-fuel passenger keke for maximum fleet savings',
+    priceNGN: 5017696,
+    priceUSD: toUSD(5017696),
+    marketRangeNGN: '₦5,017,696 (Brand New)',
+    image: IMG_TRICYCLE_TVS_KING,
+    defaultColorId: 'tricycle-green',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '199.26 cc 4-Stroke Liquid-Cooled',
+      powerTorque: '6.3 kW (8.4 hp) CNG Mode',
+      transmission: '4-Forward + 1-Reverse',
+      fuelTank: 'Factory CNG + Petrol',
+      weightSeat: '4-Seater Passenger · 405 kg Kerb Weight',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Factory CNG + Petrol',
+      capacityPayload: '4-Seater Passenger',
+      weightSpeed: '405 kg Kerb Weight',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'tvs-king-duramax-cargo',
+    model: 'King Duramax Plus / Kargo 225',
+    brand: 'TVS',
+    category: 'Tricycles (Heavy-Duty / Cargo)',
+    vehicleType: 'tricycle',
+    fuelType: 'Petrol',
+    condition: 'Brand New',
+    subtitle: '225cc reinforced-chassis commercial & cargo workhorse',
+    priceNGN: 4900000,
+    priceUSD: toUSD(4900000),
+    marketRangeNGN: '₦4,700,000 – ₦5,100,000',
+    image: IMG_TRICYCLE_PIAGGIO_CARGO,
+    defaultColorId: 'tricycle-white',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '225.8 cc 4-Stroke Liquid-Cooled',
+      powerTorque: '8.1 kW / 18 Nm @ 2,750 rpm',
+      transmission: '4-Forward + 1-Reverse',
+      fuelTank: 'Petrol',
+      weightSeat: 'Heavy-Duty Commercial · Reinforced Chassis',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Petrol',
+      capacityPayload: 'Heavy-Duty Commercial',
+      weightSpeed: 'Reinforced Chassis',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'bajaj-re-4s-xl-petrol',
+    model: 'RE 4S / RE XL (Petrol)',
+    brand: 'Bajaj',
+    category: 'Tricycles (Passenger)',
+    vehicleType: 'tricycle',
+    fuelType: 'Petrol',
+    condition: 'Brand New',
+    subtitle: 'Extended XL cabin comfort with rugged Bajaj DTS-i reliability',
+    priceNGN: 4150000,
+    priceUSD: toUSD(4150000),
+    marketRangeNGN: '₦3,800,000 – ₦4,420,000',
+    image: IMG_TRICYCLE_BAJAJ_RE,
+    defaultColorId: 'tricycle-red',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '198.88 cc 4-Stroke DTS-i Forced-Air',
+      powerTorque: '6.55 kW (8.8 hp) / 14.5 Nm',
+      transmission: '4-Forward + 1-Reverse Wet Multiplate',
+      fuelTank: 'Petrol',
+      weightSeat: 'Extended XL 4-Seater Cabin · 348 kg',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Petrol',
+      capacityPayload: 'Extended XL 4-Seater Cabin',
+      weightSpeed: '348 kg',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'bajaj-re-4s-xl-cng',
+    model: 'RE 4S / RE XL CNG',
+    brand: 'Bajaj',
+    category: 'Tricycles (Passenger)',
+    vehicleType: 'tricycle',
+    fuelType: 'CNG + Petrol Bi-Fuel',
+    condition: 'Brand New',
+    subtitle: 'Factory 30L CNG cylinder + Petrol bi-fuel extended-cabin keke',
+    priceNGN: 4900000,
+    priceUSD: toUSD(4900000),
+    marketRangeNGN: '₦4,840,000 – ₦4,970,000',
+    image: IMG_TRICYCLE_BAJAJ_RE,
+    defaultColorId: 'tricycle-green',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '198.88 cc 4-Stroke DTS-i',
+      powerTorque: '6.55 kW (8.8 hp) / 14.5 Nm',
+      transmission: '4-Forward + 1-Reverse',
+      fuelTank: '30L CNG Cylinder + Petrol',
+      weightSeat: 'Extended XL Cabin · 395 kg',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: '30L CNG Cylinder + Petrol',
+      capacityPayload: 'Extended XL Cabin',
+      weightSpeed: '395 kg',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'piaggio-ape-city-passenger',
+    model: 'Ape City (200cc / 230cc Passenger)',
+    brand: 'Piaggio',
+    category: 'Tricycles (Passenger)',
+    vehicleType: 'tricycle',
+    fuelType: 'Petrol',
+    condition: 'Brand New',
+    subtitle: 'Italian-engineered Piaggio passenger tricycle with roomy cabin',
+    priceNGN: 4000000,
+    priceUSD: toUSD(4000000),
+    marketRangeNGN: '₦3,800,000 – ₦4,200,000',
+    image: IMG_TRICYCLE_PIAGGIO_CITY,
+    defaultColorId: 'tricycle-blue',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '200–230 cc 4-Stroke Air-Cooled',
+      powerTorque: '8–11 hp / 14–17 Nm',
+      transmission: '4-Forward + 1-Reverse',
+      fuelTank: 'Petrol',
+      weightSeat: '4-Seater (2,700mm / 1,920mm WB) · 360 kg',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Petrol',
+      capacityPayload: '4-Seater (2,700mm Length / 1,920mm Wheelbase)',
+      weightSpeed: '360 kg',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'piaggio-ape-xtra-ldx-cargo',
+    model: 'Ape Xtra LDX (Cargo / Heavy-Duty)',
+    brand: 'Piaggio',
+    category: 'Tricycles (Heavy-Duty / Cargo)',
+    vehicleType: 'tricycle',
+    fuelType: 'Diesel / CNG',
+    condition: 'Brand New',
+    subtitle: '435cc heavy-duty commercial cargo pickup with 975 kg GVW rating',
+    priceNGN: 5000000,
+    priceUSD: toUSD(5000000),
+    marketRangeNGN: '₦4,500,000 – ₦5,500,000',
+    image: IMG_TRICYCLE_PIAGGIO_CARGO,
+    defaultColorId: 'tricycle-white',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '435 cc Single-Cylinder 4-Stroke',
+      powerTorque: '7.5–9.59 hp / 16.54–21 Nm',
+      transmission: '4-Forward + 1-Reverse',
+      fuelTank: 'Diesel / CNG',
+      weightSeat: '975 kg GVW Cargo Deck · 479 kg • 245mm Clearance',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Diesel / CNG',
+      capacityPayload: '975 kg GVW Heavy Cargo Deck',
+      weightSpeed: '479 kg • 245mm Clearance',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
+  {
+    id: 'daylong-dl150-dl200-cargo',
+    model: 'DL150 / DL200 Cargo Tricycle',
+    brand: 'Daylong',
+    category: 'Tricycles (Heavy-Duty / Cargo)',
+    vehicleType: 'tricycle',
+    fuelType: 'Petrol',
+    condition: 'Brand New',
+    subtitle: 'Open steel-bed cargo motorcycle tricycle for agricultural & market logistics',
+    priceNGN: 2750000,
+    priceUSD: toUSD(2750000),
+    marketRangeNGN: '₦2,500,000 – ₦3,000,000',
+    image: IMG_TRICYCLE_DAYLONG_CARGO,
+    defaultColorId: 'tricycle-green',
+    colorOptions: TRICYCLE_COLOR_OPTIONS,
+    specs: {
+      engine: '150–200 cc 4-Stroke Air-Cooled',
+      powerTorque: '8–10 hp',
+      transmission: '5-Speed + Reverse Gear',
+      fuelTank: 'Petrol',
+      weightSeat: 'Open Steel Cargo Bed · 330 kg',
+      conditionLabel: 'Brand New • 0 km',
+      fuelSystem: 'Petrol',
+      capacityPayload: 'Open Steel Cargo Bed',
+      weightSpeed: '330 kg',
+    },
+    defaultGearId: 'gear-armored-gloves',
+    inStock: true,
+  },
 ];
+
+export function isTricycle(bike: Motorcycle): boolean {
+  return (
+    bike.vehicleType === 'tricycle' ||
+    bike.category === 'Tricycles (Passenger)' ||
+    bike.category === 'Tricycles (Heavy-Duty / Cargo)'
+  );
+}
 
 export function matchesBrandFilter(
   bike: Motorcycle,

@@ -31,7 +31,9 @@ import {
   Motorcycle,
   NIGERIAN_RIDER_GEAR,
   RidingGearItem,
+  VehicleSegmentFilter,
   formatMoney,
+  isTricycle,
   matchesBrandFilter,
 } from './data/motorcycles';
 import {
@@ -128,9 +130,23 @@ function saveToStorage<T>(key: string, value: T) {
 }
 
 export default function App() {
-  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(() =>
-    loadFromStorage<Motorcycle[]>('osas_motorcycles', MOTORCYCLES)
-  );
+  const [motorcycles, setMotorcycles] = useState<Motorcycle[]>(() => {
+    const stored = loadFromStorage<Motorcycle[]>('osas_motorcycles', MOTORCYCLES);
+    try {
+      const migrated = window.localStorage.getItem('osas_catalog_v2_tricycles_merged');
+      if (!migrated) {
+        const existingIds = new Set(stored.map((b) => b.id));
+        const missing = MOTORCYCLES.filter((b) => !existingIds.has(b.id));
+        window.localStorage.setItem('osas_catalog_v2_tricycles_merged', '1');
+        if (missing.length > 0) {
+          return [...stored, ...missing];
+        }
+      }
+    } catch {
+      // ignore storage access issues
+    }
+    return stored;
+  });
   const [spareParts, setSpareParts] = useState<SparePart[]>(() =>
     loadFromStorage<SparePart[]>('osas_spare_parts', SPARE_PARTS)
   );
@@ -142,6 +158,8 @@ export default function App() {
   );
 
   const [activeSection, setActiveSection] = useState<NavSection>('models');
+  const [vehicleSegment, setVehicleSegment] =
+    useState<VehicleSegmentFilter>('all');
   const [selectedBrand, setSelectedBrand] = useState<'All' | BrandName>('All');
   const [selectedCategory, setSelectedCategory] = useState<
     'All' | CategoryName
@@ -231,7 +249,17 @@ export default function App() {
   useEffect(() => {
     const unsubscribe = subscribePublicCatalog({
       onMotorcycles: (cloudBikes) => {
-        setMotorcycles(cloudBikes);
+        setMotorcycles((prev) => {
+          if (cloudBikes.length === 0) return prev;
+          const existingIds = new Set(cloudBikes.map((b) => b.id));
+          const missingDefaultTricycles = MOTORCYCLES.filter(
+            (b) => isTricycle(b) && !existingIds.has(b.id)
+          );
+          if (missingDefaultTricycles.length > 0) {
+            return [...cloudBikes, ...missingDefaultTricycles];
+          }
+          return cloudBikes;
+        });
       },
       onSpareParts: (cloudParts) => {
         setSpareParts(cloudParts);
@@ -280,7 +308,7 @@ export default function App() {
     return () => unsubscribe();
   }, [authReady, authUser, isBootstrappedAdmin]);
 
-  // Seed initial showroom catalog to Firestore once when a cloud admin connects to an empty database
+  // Seed initial showroom catalog (and merge any newly added default tricycles) to Firestore when a cloud admin connects
   useEffect(() => {
     if (!authReady || !isCloudAdmin) return;
     let active = true;
@@ -291,6 +319,32 @@ export default function App() {
         );
         if (active && snap.empty) {
           await seedCatalogToDb(motorcycles, spareParts, settings);
+          try {
+            window.localStorage.setItem('osas_firestore_tricycles_seeded', '1');
+          } catch {
+            // ignore
+          }
+        } else if (
+          active &&
+          !window.localStorage.getItem('osas_firestore_tricycles_seeded')
+        ) {
+          const allSnap = await getDocs(collection(db, 'motorcycles'));
+          const existingIds = new Set(allSnap.docs.map((d) => d.id));
+          const missingTricycles = MOTORCYCLES.filter(
+            (b) => isTricycle(b) && !existingIds.has(b.id)
+          );
+          if (missingTricycles.length > 0) {
+            await Promise.all(
+              missingTricycles.map((bike, offset) =>
+                saveMotorcycleToDb(bike, allSnap.size + offset)
+              )
+            );
+          }
+          try {
+            window.localStorage.setItem('osas_firestore_tricycles_seeded', '1');
+          } catch {
+            // ignore
+          }
         }
       } catch {
         // ignore if offline; rules/ErrorBoundary handle persistent errors
@@ -379,13 +433,27 @@ export default function App() {
   const stageBikes = useMemo(() => {
     const base = motorcycles.length > 0 ? motorcycles : MOTORCYCLES;
     const matched = base.filter((bike) => {
+      const segOk =
+        vehicleSegment === 'all'
+          ? true
+          : vehicleSegment === 'tricycle'
+          ? isTricycle(bike)
+          : !isTricycle(bike);
       const brandOk = matchesBrandFilter(bike, selectedBrand);
       const categoryOk =
         selectedCategory === 'All' || bike.category === selectedCategory;
-      return brandOk && categoryOk;
+      return segOk && brandOk && categoryOk;
     });
-    return matched.length > 0 ? matched : base;
-  }, [motorcycles, selectedBrand, selectedCategory]);
+    if (matched.length > 0) return matched;
+    const segmentOnly = base.filter((bike) =>
+      vehicleSegment === 'all'
+        ? true
+        : vehicleSegment === 'tricycle'
+        ? isTricycle(bike)
+        : !isTricycle(bike)
+    );
+    return segmentOnly.length > 0 ? segmentOnly : base;
+  }, [motorcycles, vehicleSegment, selectedBrand, selectedCategory]);
 
   const activeIndex = useMemo(() => {
     const idx = stageBikes.findIndex((b) => b.id === activeBikeId);
@@ -441,20 +509,63 @@ export default function App() {
       ?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const handleChangeVehicleSegment = (segment: VehicleSegmentFilter) => {
+    setVehicleSegment(segment);
+    setSelectedCategory('All');
+    const pool = motorcycles.length > 0 ? motorcycles : MOTORCYCLES;
+    const matchInSegment = pool.find((b) => {
+      const segOk =
+        segment === 'all'
+          ? true
+          : segment === 'tricycle'
+          ? isTricycle(b)
+          : !isTricycle(b);
+      return segOk && matchesBrandFilter(b, selectedBrand);
+    });
+    if (matchInSegment) {
+      setActiveBikeId(matchInSegment.id);
+    } else {
+      setSelectedBrand('All');
+      const fallbackSeg = pool.find((b) =>
+        segment === 'all'
+          ? true
+          : segment === 'tricycle'
+          ? isTricycle(b)
+          : !isTricycle(b)
+      );
+      if (fallbackSeg) setActiveBikeId(fallbackSeg.id);
+    }
+  };
+
   const handleSelectBrand = (brand: 'All' | BrandName) => {
     setSelectedBrand(brand);
     if (brand !== 'All') {
-      const firstMatch = motorcycles.find(
-        (b) =>
+      const firstMatch = motorcycles.find((b) => {
+        const segOk =
+          vehicleSegment === 'all'
+            ? true
+            : vehicleSegment === 'tricycle'
+            ? isTricycle(b)
+            : !isTricycle(b);
+        return (
+          segOk &&
           matchesBrandFilter(b, brand) &&
           (selectedCategory === 'All' || b.category === selectedCategory)
-      );
+        );
+      });
       if (firstMatch) {
         setActiveBikeId(firstMatch.id);
       } else {
         setSelectedCategory('All');
         const anyBrand = motorcycles.find((b) => matchesBrandFilter(b, brand));
-        if (anyBrand) setActiveBikeId(anyBrand.id);
+        if (anyBrand) {
+          if (vehicleSegment === 'tricycle' && !isTricycle(anyBrand)) {
+            setVehicleSegment('all');
+          } else if (vehicleSegment === 'motorcycle' && isTricycle(anyBrand)) {
+            setVehicleSegment('all');
+          }
+          setActiveBikeId(anyBrand.id);
+        }
       }
     }
   };
@@ -462,6 +573,14 @@ export default function App() {
   const handleSelectCategory = (category: 'All' | CategoryName) => {
     setSelectedCategory(category);
     if (category !== 'All') {
+      const catIsTricycle =
+        category === 'Tricycles (Passenger)' ||
+        category === 'Tricycles (Heavy-Duty / Cargo)';
+      if (catIsTricycle && vehicleSegment === 'motorcycle') {
+        setVehicleSegment('tricycle');
+      } else if (!catIsTricycle && vehicleSegment === 'tricycle') {
+        setVehicleSegment('motorcycle');
+      }
       const firstMatch = motorcycles.find(
         (b) =>
           b.category === category && matchesBrandFilter(b, selectedBrand)
@@ -585,6 +704,12 @@ export default function App() {
   const handleLoadOnStage = (bikeId: string) => {
     const target = motorcycles.find((b) => b.id === bikeId);
     if (!target) return;
+    if (
+      (vehicleSegment === 'tricycle' && !isTricycle(target)) ||
+      (vehicleSegment === 'motorcycle' && isTricycle(target))
+    ) {
+      setVehicleSegment('all');
+    }
     if (selectedBrand !== 'All' && !matchesBrandFilter(target, selectedBrand)) {
       setSelectedBrand('All');
     }
@@ -1003,6 +1128,7 @@ export default function App() {
             }}
             onSelectPartSearch={(part) => setDetailPart(part)}
             onAddPartToBag={handleAddPartToBag}
+            activeBikeIsTricycle={isTricycle(activeBike)}
           />
 
           <HeroStage
@@ -1019,6 +1145,8 @@ export default function App() {
             onNext={handleNextBike}
             onOpenDetail={(bike) => setDetailBike(bike)}
             onExploreByPrice={handleExploreByPrice}
+            vehicleSegment={vehicleSegment}
+            onChangeVehicleSegment={handleChangeVehicleSegment}
           />
 
           <BentoDashboard
@@ -1039,6 +1167,8 @@ export default function App() {
         motorcycles={motorcycles}
         spareParts={spareParts}
         activeBike={activeBike}
+        vehicleSegment={vehicleSegment}
+        onChangeVehicleSegment={handleChangeVehicleSegment}
         selectedBrand={selectedBrand}
         onSelectBrand={handleSelectBrand}
         selectedCategory={selectedCategory}
@@ -1262,7 +1392,7 @@ export default function App() {
               }}
               className="shrink-0 px-6 py-3 rounded-full bg-[#18181B] hover:bg-[#DC2626] text-white text-[13.5px] font-semibold transition-colors shadow-[0_6px_16px_rgba(24,24,27,0.18)] cursor-pointer"
             >
-              Order Bike
+              {isTricycle(activeBike) ? 'Order Tricycle' : 'Order Bike'}
             </button>
           </div>
         </div>

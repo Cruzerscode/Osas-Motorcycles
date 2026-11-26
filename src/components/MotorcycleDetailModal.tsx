@@ -8,6 +8,7 @@ import {
   Fuel,
   Gauge,
   MessageCircle,
+  Package,
   Scale,
   Settings2,
   ShieldCheck,
@@ -21,6 +22,7 @@ import {
   FRONT_CUSTOMIZER_IMAGE,
   Motorcycle,
   formatMoney,
+  isTricycle,
 } from '../data/motorcycles';
 import { PaintedBikeImage } from './PaintedBikeImage';
 
@@ -77,6 +79,8 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
   if (!open || !bike) return null;
 
   const isBrandNew = bike.condition === 'Brand New';
+  const bikeIsTricycle = isTricycle(bike);
+  const isCngFuel = bike.fuelType === 'CNG + Petrol Bi-Fuel';
   const totalUSD = bike.priceUSD + selectedColor.surchargeUSD;
   const totalNGN = bike.priceNGN + selectedColor.surchargeNGN;
   const formattedTotal = formatMoney(totalUSD, totalNGN, currency);
@@ -88,43 +92,79 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
     } ${bike.brand} ${bike.model} in ${selectedColor.name} (${formattedTotal}). Is it available for pickup or delivery?`
   );
 
-  const specItems = [
-    {
-      label: 'Engine Displacement & Type',
-      value: bike.specs.engine,
-      Icon: Cog,
-    },
-    {
-      label: 'Power & Torque',
-      value: bike.specs.powerTorque,
-      Icon: Gauge,
-    },
-    {
-      label: 'Transmission & Start System',
-      value: bike.specs.transmission,
-      Icon: Settings2,
-    },
-    {
-      label: 'Fuel Tank Capacity & Reserve',
-      value: bike.specs.fuelTank,
-      Icon: Fuel,
-    },
-    {
-      label: 'Kerb Weight / Seat / Clearance',
-      value: bike.specs.weightSeat,
-      Icon: Scale,
-    },
-    {
-      label: 'Warranty & Showroom Status',
-      value: isBrandNew
-        ? 'In Stock — 12-Month OEM Warranty · Ready for Pickup or Delivery'
-        : 'In Stock — Verified Customs Cleared · 30-Day Engine Guarantee',
-      Icon: ShieldCheck,
-    },
-  ];
+  const specItems = bikeIsTricycle
+    ? [
+        {
+          label: 'Engine Displacement & Cooling',
+          value: bike.specs.engine,
+          Icon: Cog,
+        },
+        {
+          label: 'Power & Torque',
+          value: bike.specs.powerTorque,
+          Icon: Gauge,
+        },
+        {
+          label: 'Fuel System',
+          value:
+            bike.specs.fuelSystem ?? bike.fuelType ?? bike.specs.fuelTank,
+          Icon: Fuel,
+        },
+        {
+          label: 'Transmission',
+          value: bike.specs.transmission,
+          Icon: Settings2,
+        },
+        {
+          label: 'Capacity / Payload',
+          value: bike.specs.capacityPayload ?? bike.specs.weightSeat,
+          Icon: Package,
+        },
+        {
+          label: 'Weight / Speed & Status',
+          value: `${bike.specs.weightSpeed ?? bike.specs.weightSeat} · 12-Month OEM Warranty`,
+          Icon: ShieldCheck,
+        },
+      ]
+    : [
+        {
+          label: 'Engine Displacement & Type',
+          value: bike.specs.engine,
+          Icon: Cog,
+        },
+        {
+          label: 'Power & Torque',
+          value: bike.specs.powerTorque,
+          Icon: Gauge,
+        },
+        {
+          label: 'Transmission & Start System',
+          value: bike.specs.transmission,
+          Icon: Settings2,
+        },
+        {
+          label: 'Fuel Tank Capacity & Reserve',
+          value: bike.specs.fuelTank,
+          Icon: Fuel,
+        },
+        {
+          label: 'Kerb Weight / Seat / Clearance',
+          value: bike.specs.weightSeat,
+          Icon: Scale,
+        },
+        {
+          label: 'Warranty & Showroom Status',
+          value: isBrandNew
+            ? 'In Stock — 12-Month OEM Warranty · Ready for Pickup or Delivery'
+            : 'In Stock — Verified Customs Cleared · 30-Day Engine Guarantee',
+          Icon: ShieldCheck,
+        },
+      ];
 
   const activeImageSrc =
-    viewAngle === 'front' ? FRONT_CUSTOMIZER_IMAGE : bike.image;
+    viewAngle === 'front' && !bikeIsTricycle
+      ? FRONT_CUSTOMIZER_IMAGE
+      : bike.image;
 
   return (
     <div
@@ -155,7 +195,7 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
           {/* Left Column: Visual Stage, Angle Switcher & Color Customizer */}
           <div className="lg:col-span-6 space-y-4">
             <div className="relative bg-[#F3F3F5] rounded-2xl p-4 sm:p-6 aspect-[4/3] overflow-hidden flex items-center justify-center">
-              {/* Condition & Active Color Badges */}
+              {/* Condition, Fuel & Active Color Badges */}
               <div className="absolute top-4 left-4 right-4 z-10 flex flex-wrap items-center gap-1.5 pointer-events-none">
                 <span
                   className={`px-3 py-1 rounded-full text-[11px] font-semibold tracking-tight ${
@@ -166,6 +206,17 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
                 >
                   {isBrandNew ? 'Brand New • 0 km' : 'Foreign Used (Tokunbo)'}
                 </span>
+                {bike.fuelType && (
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                      isCngFuel
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-white/95 text-[#18181B] border border-black/[0.06]'
+                    }`}
+                  >
+                    {bike.fuelType}
+                  </span>
+                )}
                 {viewAngle !== '3d' && (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/95 border border-black/[0.06] text-[11px] font-semibold text-[#18181B] shadow-xs tabular-nums">
                     <span
@@ -173,7 +224,8 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
                       style={{ backgroundColor: selectedColor.hex }}
                     />
                     <span>
-                      Color: {selectedColor.name} •{' '}
+                      {bikeIsTricycle ? 'Canopy / Body' : 'Color'}:{' '}
+                      {selectedColor.name} •{' '}
                       {selectedColor.surchargeNGN === 0
                         ? 'Included'
                         : formatMoney(
@@ -277,7 +329,9 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
             <div className="p-4 rounded-2xl bg-[#F3F3F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="text-[11.5px] font-semibold text-[#71717A]">
-                  Selected Trim Color
+                  {bikeIsTricycle
+                    ? 'Selected Canopy / Body Color'
+                    : 'Selected Trim Color'}
                 </div>
                 <div className="text-[14px] font-bold text-[#18181B] flex items-center gap-2">
                   <span>{selectedColor.name}</span>
@@ -400,7 +454,7 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
                   onClick={() => onOrderBike(bike)}
                   className="flex-1 py-3 px-5 rounded-full bg-[#18181B] text-white text-[13.5px] font-semibold hover:bg-zinc-800 transition-colors cursor-pointer text-center"
                 >
-                  Order This Bike
+                  {bikeIsTricycle ? 'Order Tricycle' : 'Order This Bike'}
                 </button>
                 <button
                   type="button"
@@ -408,7 +462,7 @@ export const MotorcycleDetailModal: React.FC<MotorcycleDetailModalProps> = ({
                   className="flex-1 py-3 px-5 rounded-full bg-white text-[#18181B] text-[13.5px] font-semibold border border-[#18181B]/20 hover:bg-zinc-50 transition-colors inline-flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <Calendar className="w-4 h-4" />
-                  <span>Book Test Ride</span>
+                  <span>{bikeIsTricycle ? 'Inspect in Showroom' : 'Book Test Ride'}</span>
                 </button>
               </div>
 

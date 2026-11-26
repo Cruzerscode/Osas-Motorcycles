@@ -61,7 +61,7 @@ service cloud.firestore {
         'priceNGN', 'priceUSD', 'marketRangeNGN', 'image',
         'defaultColorId', 'specs', 'defaultGearId', 'inStock'
       ]) && data.keys().hasOnly([
-        'id', 'model', 'brand', 'brandTags', 'category', 'condition',
+        'id', 'model', 'brand', 'brandTags', 'category', 'vehicleType', 'fuelType', 'condition',
         'subtitle', 'priceNGN', 'priceUSD', 'marketRangeNGN', 'image',
         'flipProfile', 'defaultColorId', 'specs', 'defaultGearId',
         'inStock', 'stockStatus', 'model3dUrl', 'model3dName',
@@ -69,9 +69,11 @@ service cloud.firestore {
       ]) &&
       isValidId(data.id) &&
       isNonEmptyString(data.model, 120) &&
-      data.brand in ['Bajaj', 'TVS', 'Honda', 'Hero', 'Suzuki', 'Qlink', 'Daylong', 'Haojue', 'Yamaha'] &&
-      data.category in ['Commuter / Commercial', 'Dispatch / Off-Road', "Ladies' Cubs & Scooters", '600cc Power Bikes'] &&
+      data.brand in ['Bajaj', 'TVS', 'Honda', 'Hero', 'Suzuki', 'Qlink', 'Daylong', 'Haojue', 'Yamaha', 'Piaggio'] &&
+      data.category in ['Commuter / Commercial', 'Dispatch / Off-Road', "Ladies' Cubs & Scooters", '600cc Power Bikes', 'Tricycles (Passenger)', 'Tricycles (Heavy-Duty / Cargo)'] &&
       data.condition in ['Brand New', 'Foreign Used (Tokunbo)'] &&
+      (!('vehicleType' in data) || data.vehicleType in ['motorcycle', 'tricycle']) &&
+      (!('fuelType' in data) || data.fuelType in ['Petrol', 'CNG + Petrol Bi-Fuel', 'Diesel / CNG']) &&
       isBoundedString(data.subtitle, 200) &&
       data.priceNGN is number && data.priceNGN >= 0 &&
       data.priceUSD is number && data.priceUSD >= 0 &&
@@ -181,7 +183,7 @@ service cloud.firestore {
       data.status in ['Pending', 'Confirmed', 'Ready for Pickup', 'Dispatched', 'Delivered', 'Cancelled'] &&
       isNonEmptyString(data.customerName, 120) &&
       isNonEmptyString(data.whatsapp, 40) &&
-      data.orderType in ['Motorcycle', 'Spare Parts & Gear'] &&
+      data.orderType in ['Motorcycle', 'Tricycle', 'Spare Parts & Gear'] &&
       (!('deliveryLocation' in data) || isBoundedString(data.deliveryLocation, 240)) &&
       (!('paymentMethod' in data) || isBoundedString(data.paymentMethod, 80)) &&
       (!('colorName' in data) || isBoundedString(data.colorName, 64)) &&

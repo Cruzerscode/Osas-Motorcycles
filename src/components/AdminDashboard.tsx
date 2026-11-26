@@ -37,7 +37,9 @@ import {
   CategoryName,
   CurrencyCode,
   Motorcycle,
+  VehicleSegmentFilter,
   formatMoney,
+  isTricycle,
 } from '../data/motorcycles';
 import {
   PART_CATEGORIES,
@@ -110,6 +112,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Bike Filters & Modal State
   const [bikeSearch, setBikeSearch] = useState('');
+  const [bikeSegmentFilter, setBikeSegmentFilter] =
+    useState<VehicleSegmentFilter>('all');
   const [bikeBrandFilter, setBikeBrandFilter] = useState<'All' | BrandName>(
     'All'
   );
@@ -184,6 +188,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const filteredBikes = useMemo(() => {
     const q = bikeSearch.trim().toLowerCase();
     return motorcycles.filter((b) => {
+      if (bikeSegmentFilter === 'motorcycle' && isTricycle(b)) {
+        return false;
+      }
+      if (bikeSegmentFilter === 'tricycle' && !isTricycle(b)) {
+        return false;
+      }
       if (bikeBrandFilter !== 'All' && b.brand !== bikeBrandFilter) {
         return false;
       }
@@ -192,12 +202,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       }
       if (q) {
         const hay =
-          `${b.brand} ${b.model} ${b.category} ${b.condition} ${b.specs.engine}`.toLowerCase();
+          `${b.brand} ${b.model} ${b.category} ${b.condition} ${b.fuelType ?? ''} ${b.specs.engine}`.toLowerCase();
         return hay.includes(q);
       }
       return true;
     });
-  }, [motorcycles, bikeSearch, bikeBrandFilter, bikeCatFilter]);
+  }, [motorcycles, bikeSearch, bikeSegmentFilter, bikeBrandFilter, bikeCatFilter]);
 
   const filteredParts = useMemo(() => {
     const q = partSearch.trim().toLowerCase();
@@ -340,7 +350,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               className="inline-flex items-center justify-center gap-1.5 min-h-[44px] sm:min-h-0 px-3.5 sm:px-4 py-2.5 rounded-full bg-[#DC2626] hover:bg-red-700 text-white text-[12.5px] font-semibold transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4 shrink-0" />
-              <span>Add Motorcycle</span>
+              <span>Add Vehicle</span>
             </button>
 
             <button
@@ -494,7 +504,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {[
             {
               id: 'motorcycles' as AdminTab,
-              label: `Motorcycle Inventory (${motorcycles.length})`,
+              label: `Vehicles & Tricycles (${motorcycles.length})`,
               Icon: ShoppingBag,
             },
             {
@@ -548,6 +558,18 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={bikeSegmentFilter}
+                  onChange={(e) =>
+                    setBikeSegmentFilter(e.target.value as VehicleSegmentFilter)
+                  }
+                  aria-label="Filter by vehicle type"
+                  className="h-10 px-4 rounded-full bg-[#F3F3F5] text-[12.5px] font-semibold text-[#18181B] cursor-pointer"
+                >
+                  <option value="all">All Vehicles</option>
+                  <option value="motorcycle">Motorcycles Only</option>
+                  <option value="tricycle">Tricycles (Keke)</option>
+                </select>
                 <select
                   value={bikeBrandFilter}
                   onChange={(e) =>
@@ -607,6 +629,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           <h3 className="text-[15.5px] font-bold text-[#18181B] truncate">
                             {bike.model}
                           </h3>
+                          {isTricycle(bike) && (
+                            <span
+                              className={`text-[10.5px] font-semibold px-2.5 py-0.5 rounded-full ${
+                                bike.fuelType?.includes('CNG')
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-white border border-black/[0.06] text-zinc-700'
+                              }`}
+                            >
+                              {bike.fuelType || 'Tricycle'}
+                            </span>
+                          )}
                           {isFeaturedFirst && idx === 0 && (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#18181B] text-white text-[10.5px] font-semibold">
                               <Pin className="w-3 h-3 text-[#DC2626]" />

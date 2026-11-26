@@ -75,6 +75,7 @@ export function buildMotorcyclePayload(
     model: clampStr(bike.model, 120, 'Motorcycle'),
     brand: bike.brand,
     category: bike.category,
+    vehicleType: bike.vehicleType ?? 'motorcycle',
     condition: bike.condition,
     subtitle: clampStr(bike.subtitle, 200),
     priceNGN: Math.max(0, Number(bike.priceNGN) || 0),
@@ -82,14 +83,23 @@ export function buildMotorcyclePayload(
     marketRangeNGN: clampStr(bike.marketRangeNGN, 80),
     image: clampStr(bike.image, 1000),
     defaultColorId: clampStr(bike.defaultColorId || 'matte-black', 64),
-    specs: {
+    specs: stripUndefined({
       engine: clampStr(bike.specs?.engine, 160),
       powerTorque: clampStr(bike.specs?.powerTorque, 160),
       transmission: clampStr(bike.specs?.transmission, 160),
       fuelTank: clampStr(bike.specs?.fuelTank, 160),
       weightSeat: clampStr(bike.specs?.weightSeat, 160),
       conditionLabel: clampStr(bike.specs?.conditionLabel, 160),
-    },
+      fuelSystem: bike.specs?.fuelSystem
+        ? clampStr(bike.specs.fuelSystem, 160)
+        : undefined,
+      capacityPayload: bike.specs?.capacityPayload
+        ? clampStr(bike.specs.capacityPayload, 160)
+        : undefined,
+      weightSpeed: bike.specs?.weightSpeed
+        ? clampStr(bike.specs.weightSpeed, 160)
+        : undefined,
+    }),
     defaultGearId: clampStr(bike.defaultGearId || 'gear-dot-helmet', 64),
     inStock: Boolean(bike.inStock),
     stockStatus: bike.stockStatus ?? (bike.inStock ? 'In Stock' : 'Out of Stock'),
@@ -97,6 +107,9 @@ export function buildMotorcyclePayload(
     updatedAt: serverTimestamp(),
   };
 
+  if (bike.fuelType) {
+    payload.fuelType = bike.fuelType;
+  }
   if (typeof sortOrder === 'number') {
     payload.sortOrder = sortOrder;
   }

@@ -28,7 +28,9 @@ import {
   CurrencyCode,
   Motorcycle,
   RidingGearItem,
+  VehicleSegmentFilter,
   formatMoney,
+  isTricycle,
   matchesBrandFilter,
 } from '../data/motorcycles';
 import { PartVariant, SparePart } from '../data/spareParts';
@@ -36,13 +38,20 @@ import { TradeInRecord } from './ModalsAndDrawers';
 import { PaintedBikeImage } from './PaintedBikeImage';
 import { SparePartsSection } from './SparePartsSection';
 
-type PriceRangeFilter = 'all' | 'under-1.3m' | '1.3m-2.5m' | 'over-2.5m';
+type PriceRangeFilter =
+  | 'all'
+  | 'under-1.3m'
+  | '1.3m-2.5m'
+  | '2.5m-4.5m'
+  | 'over-4.5m';
 type SortOption = 'featured' | 'price-asc' | 'price-desc';
 
 interface InventoryAndAtelierProps {
   motorcycles: Motorcycle[];
   spareParts: SparePart[];
   activeBike: Motorcycle;
+  vehicleSegment: VehicleSegmentFilter;
+  onChangeVehicleSegment: (segment: VehicleSegmentFilter) => void;
   selectedBrand: 'All' | BrandName;
   onSelectBrand: (brand: 'All' | BrandName) => void;
   selectedCategory: 'All' | CategoryName;
@@ -76,6 +85,8 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
   motorcycles,
   spareParts,
   activeBike,
+  vehicleSegment,
+  onChangeVehicleSegment,
   selectedBrand,
   onSelectBrand,
   selectedCategory,
@@ -118,6 +129,12 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
 
   const filteredBikes = useMemo(() => {
     let list = motorcycles.filter((bike) => {
+      if (vehicleSegment === 'motorcycle' && isTricycle(bike)) {
+        return false;
+      }
+      if (vehicleSegment === 'tricycle' && !isTricycle(bike)) {
+        return false;
+      }
       if (!matchesBrandFilter(bike, selectedBrand)) {
         return false;
       }
@@ -127,7 +144,9 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
       if (priceRange === 'under-1.3m') return bike.priceNGN < 1300000;
       if (priceRange === '1.3m-2.5m')
         return bike.priceNGN >= 1300000 && bike.priceNGN <= 2500000;
-      if (priceRange === 'over-2.5m') return bike.priceNGN > 2500000;
+      if (priceRange === '2.5m-4.5m')
+        return bike.priceNGN > 2500000 && bike.priceNGN <= 4500000;
+      if (priceRange === 'over-4.5m') return bike.priceNGN > 4500000;
       return true;
     });
 
@@ -138,7 +157,33 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
     }
 
     return list;
-  }, [motorcycles, selectedBrand, selectedCategory, priceRange, sortOption]);
+  }, [
+    motorcycles,
+    vehicleSegment,
+    selectedBrand,
+    selectedCategory,
+    priceRange,
+    sortOption,
+  ]);
+
+  const visibleCategories = useMemo(() => {
+    if (vehicleSegment === 'tricycle') {
+      return CATEGORIES.filter(
+        (c) =>
+          c === 'All' ||
+          c === 'Tricycles (Passenger)' ||
+          c === 'Tricycles (Heavy-Duty / Cargo)'
+      );
+    }
+    if (vehicleSegment === 'motorcycle') {
+      return CATEGORIES.filter(
+        (c) =>
+          c !== 'Tricycles (Passenger)' &&
+          c !== 'Tricycles (Heavy-Duty / Cargo)'
+      );
+    }
+    return CATEGORIES;
+  }, [vehicleSegment]);
 
   const priceRanges: Array<{ id: PriceRangeFilter; label: string }> = [
     { id: 'all', label: 'All Prices' },
@@ -151,11 +196,18 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
       label: currency === 'NGN' ? '₦1.3M – ₦2.5M' : '$855 – $1,650',
     },
     {
-      id: 'over-2.5m',
+      id: '2.5m-4.5m',
       label:
         currency === 'NGN'
-          ? 'Above ₦2.5M (600cc Power)'
-          : 'Above $1,650 (600cc)',
+          ? '₦2.5M – ₦4.5M (Keke & Power)'
+          : '$1,650 – $2,960',
+    },
+    {
+      id: 'over-4.5m',
+      label:
+        currency === 'NGN'
+          ? 'Above ₦4.5M (CNG Keke & Power)'
+          : 'Above $2,960',
     },
   ];
 
@@ -242,18 +294,24 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
     <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 mt-14 space-y-16 pb-16">
       {/* Section 4: All Available Motorcycles */}
       <section id="inventory" className="scroll-mt-8">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-7">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-6">
           <div>
             <p className="text-[12px] font-semibold tracking-wide text-[#DC2626]">
-              Brand New & Verified Tokunbo Stock ({filteredBikes.length} Models)
+              {vehicleSegment === 'tricycle'
+                ? `Brand-New Keke & Cargo Tricycles (${filteredBikes.length} Models)`
+                : `Brand New & Verified Tokunbo Stock (${filteredBikes.length} Models)`}
             </p>
             <h2 className="mt-1 text-[28px] sm:text-[34px] font-bold tracking-tight text-[#18181B]">
-              All Available Motorcycles
+              {vehicleSegment === 'tricycle'
+                ? 'All Available Brand-New Tricycles'
+                : vehicleSegment === 'motorcycle'
+                ? 'All Available Motorcycles'
+                : 'Showroom Fleet: Motorcycles & Tricycles'}
             </h2>
             <p className="mt-1.5 text-[15px] text-[#71717A] max-w-2xl">
-              Every commuter, dispatch unit, step-through cub, and 600cc power
-              bike on the Osas Motorcycle floor is either Brand New (0 km) or
-              verified Foreign Used (Tokunbo).
+              {vehicleSegment === 'tricycle'
+                ? 'Every passenger keke napep and heavy-duty cargo three-wheeler on our floor is 100% Brand New (0 km) with Petrol, Factory CNG Bi-Fuel, or Diesel options.'
+                : 'Every commuter bike, dispatch machine, step-through cub, 600cc power bike, and brand-new passenger or cargo tricycle is dealership-inspected for Nigeria.'}
             </p>
           </div>
 
@@ -275,7 +333,7 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
             </select>
 
             <select
-              aria-label="Sort motorcycles"
+              aria-label="Sort showroom vehicles"
               value={sortOption}
               onChange={(e) => onChangeSortOption(e.target.value as SortOption)}
               className="px-4 py-2 rounded-full bg-white text-[13px] font-medium text-[#18181B] border border-black/[0.06] shadow-xs cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]"
@@ -287,9 +345,36 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
           </div>
         </div>
 
+        {/* Segment Filter Pills */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          {(
+            [
+              { id: 'all', label: 'All Vehicles' },
+              { id: 'motorcycle', label: 'Motorcycles' },
+              { id: 'tricycle', label: 'Tricycles (Keke)' },
+            ] as Array<{ id: VehicleSegmentFilter; label: string }>
+          ).map((seg) => {
+            const active = vehicleSegment === seg.id;
+            return (
+              <button
+                key={seg.id}
+                type="button"
+                onClick={() => onChangeVehicleSegment(seg.id)}
+                className={`px-4 py-2 rounded-full text-[13px] font-semibold transition-all duration-150 whitespace-nowrap cursor-pointer ${
+                  active
+                    ? 'bg-[#18181B] text-white shadow-sm'
+                    : 'bg-white text-[#18181B] hover:bg-zinc-50 border border-black/[0.05]'
+                }`}
+              >
+                {seg.label}
+              </button>
+            );
+          })}
+        </div>
+
         {/* Category Filter Pills (Scrollable strip on mobile) */}
         <div className="flex flex-nowrap sm:flex-wrap items-center gap-2 overflow-x-auto no-scrollbar pb-1 mb-3">
-          {CATEGORIES.map((category) => {
+          {visibleCategories.map((category) => {
             const active = selectedCategory === category;
             return (
               <button
@@ -333,15 +418,16 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
         {filteredBikes.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-black/[0.04]">
             <p className="text-[16px] font-semibold text-[#18181B]">
-              No motorcycles match the selected brand, category, and price
+              No vehicles match the selected segment, brand, category, and price
               range.
             </p>
             <p className="mt-1 text-[14px] text-[#71717A]">
-              Reset filters to explore all available Osas Motorcycle models.
+              Reset filters to explore all available Osas Motorcycle &amp; Tricycle models.
             </p>
             <button
               type="button"
               onClick={() => {
+                onChangeVehicleSegment('all');
                 onSelectBrand('All');
                 onSelectCategory('All');
                 setPriceRange('all');
@@ -369,6 +455,9 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                 bikeColors.find((c) => c.id === bike.defaultColorId) ||
                 bikeColors[0];
 
+              const cardIsTricycle = isTricycle(bike);
+              const isCngFuel = bike.fuelType === 'CNG + Petrol Bi-Fuel';
+
               return (
                 <article
                   key={bike.id}
@@ -391,7 +480,9 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                           onOpenDetail(bike);
                         }
                       }}
-                      className="group/img relative rounded-2xl bg-[#F3F3F5] aspect-[16/10] overflow-hidden flex items-center justify-center p-3 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]"
+                      className={`group/img relative rounded-2xl bg-[#F3F3F5] aspect-[16/10] overflow-hidden flex items-center justify-center ${
+                        cardIsTricycle ? 'p-4 sm:p-5' : 'p-3'
+                      } cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181B]`}
                     >
                       {!imgErrors[bike.id] ? (
                         <PaintedBikeImage
@@ -420,8 +511,8 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                         </div>
                       )}
 
-                      {/* Condition & Stock Status Badges Top-Left */}
-                      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
+                      {/* Condition, Fuel & Stock Status Badges Top-Left */}
+                      <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5 max-w-[82%]">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10.5px] font-semibold tracking-tight ${
                             isBrandNew
@@ -433,6 +524,17 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                             ? 'Brand New • 0 km'
                             : 'Foreign Used (Tokunbo)'}
                         </span>
+                        {bike.fuelType && (
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              isCngFuel
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-white/95 text-[#18181B] border border-black/[0.06]'
+                            }`}
+                          >
+                            {bike.fuelType}
+                          </span>
+                        )}
                         {bike.stockStatus && bike.stockStatus !== 'In Stock' && (
                           <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-red-50 text-[#DC2626] border border-red-200">
                             {bike.stockStatus}
@@ -493,7 +595,9 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                           {formatMoney(bike.priceUSD, bike.priceNGN, currency)}
                         </div>
                         <div className="text-[10.5px] text-[#71717A] tabular-nums">
-                          {bike.specs.fuelTank}
+                          {cardIsTricycle
+                            ? bike.specs.capacityPayload ?? bike.specs.fuelTank
+                            : bike.specs.fuelTank}
                         </div>
                       </div>
                     </div>
@@ -528,7 +632,7 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                       onClick={() => onOrderBike(bike)}
                       className="flex-1 py-2.5 px-4 rounded-full bg-[#18181B] text-white text-[13px] font-medium hover:bg-zinc-800 transition-colors cursor-pointer whitespace-nowrap"
                     >
-                      Reserve This Bike
+                      {cardIsTricycle ? 'Order Tricycle' : 'Reserve This Bike'}
                     </button>
                   </div>
                 </article>
@@ -697,6 +801,7 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
                     >
                       <option value="Bajaj">Bajaj</option>
                       <option value="TVS">TVS</option>
+                      <option value="Piaggio">Piaggio</option>
                       <option value="Honda">Honda</option>
                       <option value="Hero">Hero</option>
                       <option value="Suzuki">Suzuki</option>
@@ -868,11 +973,15 @@ export const InventoryAndAtelier: React.FC<InventoryAndAtelierProps> = ({
             </div>
             <p className="text-[13.5px] leading-relaxed text-[#52525B] max-w-md">
               Authorized dealer of brand-new commercial, dispatch, commuter, and
-              sport motorcycles plus genuine spare parts.
+              sport motorcycles, brand-new passenger &amp; cargo tricycles (Keke),
+              plus genuine spare parts.
             </p>
             <div className="pt-1 flex flex-wrap items-center gap-2 text-[11.5px] font-semibold text-zinc-600">
               <span className="px-3 py-1 rounded-full bg-[#F3F3F5]">
                 Brand New • 0 km Units
+              </span>
+              <span className="px-3 py-1 rounded-full bg-[#F3F3F5]">
+                Keke &amp; CNG Fleet
               </span>
               <span className="px-3 py-1 rounded-full bg-[#F3F3F5]">
                 OEM Spare Parts

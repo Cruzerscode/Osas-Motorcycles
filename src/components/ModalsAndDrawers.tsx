@@ -19,6 +19,7 @@ import {
   MOTORCYCLES,
   Motorcycle,
   formatMoney,
+  isTricycle,
 } from '../data/motorcycles';
 import { PaintedBikeImage } from './PaintedBikeImage';
 import { StudioImage } from './StudioImage';
@@ -48,7 +49,7 @@ export interface OrderRecord {
   colorName?: string;
   quantity?: number;
   totalNGN?: number;
-  orderType?: 'Motorcycle' | 'Spare Parts & Gear';
+  orderType?: 'Motorcycle' | 'Tricycle' | 'Spare Parts & Gear';
 }
 
 export interface TestRideRecord {
@@ -403,6 +404,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   if (!open || !bike) return null;
 
+  const bikeIsTricycle = isTricycle(bike);
   const totalUSD = bike.priceUSD + selectedColor.surchargeUSD;
   const totalNGN = bike.priceNGN + selectedColor.surchargeNGN;
   const totalFormatted = formatMoney(totalUSD, totalNGN, currency);
@@ -442,7 +444,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       colorName: selectedColor.name,
       quantity: 1,
       totalNGN,
-      orderType: 'Motorcycle',
+      orderType: bikeIsTricycle ? 'Tricycle' : 'Motorcycle',
     });
     setConfirmedOrderRef(orderCode);
     setFullName('');
@@ -544,7 +546,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 <span className="truncate">{selectedColor.name}</span>
               </div>
               <div className="text-[11.5px] text-[#71717A] tabular-nums">
-                {bike.specs.conditionLabel} · {bike.specs.engine}
+                {bike.specs.conditionLabel}
+                {bikeIsTricycle && bike.fuelType
+                  ? ` · Fuel: ${bike.fuelType}`
+                  : ''}
+                {' · '}
+                {bike.specs.engine}
                 {selectedColor.surchargeNGN > 0
                   ? ` · +${formatMoney(
                       selectedColor.surchargeUSD,
@@ -593,7 +600,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 : 'text-zinc-600 hover:text-[#18181B]'
             }`}
           >
-            Book a Showroom Test Ride
+            {bikeIsTricycle
+              ? 'Book Showroom Inspection'
+              : 'Book a Showroom Test Ride'}
           </button>
         </div>
 
@@ -722,7 +731,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="submit"
                   className="w-full py-3 rounded-full bg-[#18181B] text-white text-[14px] font-semibold hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
-                  Confirm Order · {totalFormatted}
+                  {bikeIsTricycle
+                    ? `Confirm Tricycle Order · ${totalFormatted}`
+                    : `Confirm Order · ${totalFormatted}`}
                 </button>
               </form>
             )}
@@ -741,12 +752,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   Booking #{confirmedRideRef}
                 </p>
                 <h3 className="mt-1 text-[20px] font-bold text-[#18181B]">
-                  Showroom Test Ride Confirmed
+                  {bikeIsTricycle
+                    ? 'Showroom Inspection Confirmed'
+                    : 'Showroom Test Ride Confirmed'}
                 </h3>
                 <p className="mt-2 text-[13.5px] text-[#71717A] max-w-md mx-auto">
-                  Your {bike.brand} {bike.model} will be prepped and warmed up at
-                  our {rideShowroom}. Please bring your valid rider&apos;s
-                  license.
+                  Your {bike.brand} {bike.model} will be prepped and ready for
+                  inspection at our {rideShowroom}. Please bring a valid ID
+                  {bikeIsTricycle ? ' or operator license' : " and rider's license"}
+                  .
                 </p>
                 <button
                   type="button"
@@ -845,8 +859,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     className="mt-0.5 w-4 h-4 accent-[#DC2626] rounded cursor-pointer"
                   />
                   <span className="text-[12.5px] text-[#52525B] leading-snug">
-                    I confirm I hold a valid motorcycle rider&apos;s license and
-                    will present it at the showroom prior to my test ride.
+                    {bikeIsTricycle
+                      ? 'I confirm I hold a valid operator / driver license and will present it at the showroom prior to inspection.'
+                      : "I confirm I hold a valid motorcycle rider's license and will present it at the showroom prior to my test ride."}
                   </span>
                 </label>
 
@@ -854,7 +869,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="submit"
                   className="w-full py-3 rounded-full bg-[#18181B] text-white text-[14px] font-semibold hover:bg-zinc-800 transition-colors cursor-pointer"
                 >
-                  Confirm Test Ride Booking
+                  {bikeIsTricycle
+                    ? 'Confirm Showroom Inspection'
+                    : 'Confirm Test Ride Booking'}
                 </button>
               </form>
             )}
@@ -1001,7 +1018,7 @@ export const FinancingEstimatorModal: React.FC<
                 htmlFor="financing-bike-select"
                 className="block text-[12px] font-semibold text-[#71717A] mb-1.5"
               >
-                Selected Motorcycle
+                Selected Vehicle (Motorcycle or Tricycle)
               </label>
               <select
                 id="financing-bike-select"
@@ -1011,11 +1028,17 @@ export const FinancingEstimatorModal: React.FC<
               >
                 {motorcycles.map((bike) => (
                   <option key={bike.id} value={bike.id}>
+                    {isTricycle(bike) ? '[Tricycle] ' : ''}
                     {bike.brand} {bike.model} —{' '}
                     {formatMoney(bike.priceUSD, bike.priceNGN, currency)}
                   </option>
                 ))}
               </select>
+              {isTricycle(targetBike) && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold">
+                  Commercial Keke &amp; Cargo Fleet Plan · {targetBike.fuelType || 'Petrol'}
+                </div>
+              )}
             </div>
 
             {/* Down Payment Slider */}

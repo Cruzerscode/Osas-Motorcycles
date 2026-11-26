@@ -17,14 +17,23 @@ import {
   CategoryName,
   ColorOption,
   ConditionType,
+  FuelType,
   IMG_COMMUTER_BOXER,
   IMG_COMMUTER_CLASSIC,
   IMG_DISPATCH_DUAL,
   IMG_HONDA_CBR600,
   IMG_LADIES_CUB,
   IMG_SUZUKI_GSXR,
+  IMG_TRICYCLE_BAJAJ_RE,
+  IMG_TRICYCLE_DAYLONG_CARGO,
+  IMG_TRICYCLE_PIAGGIO_CARGO,
+  IMG_TRICYCLE_PIAGGIO_CITY,
+  IMG_TRICYCLE_TVS_KING,
   IMG_YAMAHA_R6,
   Motorcycle,
+  TRICYCLE_COLOR_OPTIONS,
+  VehicleType,
+  isTricycle,
 } from '../data/motorcycles';
 import { GlbModelViewer } from './GlbModelViewer';
 
@@ -44,6 +53,11 @@ const STUDIO_PRESET_IMAGES = [
   { label: 'Suzuki 600', url: IMG_SUZUKI_GSXR },
   { label: 'Yamaha R6', url: IMG_YAMAHA_R6 },
   { label: 'Honda CBR', url: IMG_HONDA_CBR600 },
+  { label: 'TVS King Keke', url: IMG_TRICYCLE_TVS_KING },
+  { label: 'Bajaj RE Keke', url: IMG_TRICYCLE_BAJAJ_RE },
+  { label: 'Piaggio City', url: IMG_TRICYCLE_PIAGGIO_CITY },
+  { label: 'Piaggio Cargo', url: IMG_TRICYCLE_PIAGGIO_CARGO },
+  { label: 'Daylong Cargo', url: IMG_TRICYCLE_DAYLONG_CARGO },
 ];
 
 const BRAND_LIST = BRANDS.filter((b): b is BrandName => b !== 'All');
@@ -56,6 +70,8 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const [vehicleType, setVehicleType] = useState<VehicleType>('motorcycle');
+  const [fuelType, setFuelType] = useState<FuelType>('Petrol');
   const [brand, setBrand] = useState<BrandName>('Bajaj');
   const [model, setModel] = useState('');
   const [subtitle, setSubtitle] = useState('');
@@ -78,6 +94,10 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
   const [specConditionLabel, setSpecConditionLabel] = useState(
     'Brand New • 0 km'
   );
+  // Tricycle-specific optional bento specs
+  const [specFuelSystem, setSpecFuelSystem] = useState('Petrol (10.5 L Tank)');
+  const [specCapacityPayload, setSpecCapacityPayload] = useState('Driver + 3 Passengers');
+  const [specWeightSpeed, setSpecWeightSpeed] = useState('345 kg • 65 km/h');
 
   // 3D GLB / GLTF
   const [model3dUrl, setModel3dUrl] = useState('');
@@ -96,11 +116,14 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
     if (!open) return;
     setGlbHint('');
     if (initialBike) {
+      const bikeIsTri = isTricycle(initialBike);
+      setVehicleType(bikeIsTri ? 'tricycle' : 'motorcycle');
+      setFuelType(initialBike.fuelType ?? 'Petrol');
       setBrand(initialBike.brand);
       setModel(initialBike.model);
       setSubtitle(initialBike.subtitle);
       setCategory(initialBike.category);
-      setCondition(initialBike.condition);
+      setCondition(bikeIsTri ? 'Brand New' : initialBike.condition);
       setStockStatus(
         initialBike.stockStatus ?? (initialBike.inStock ? 'In Stock' : 'Out of Stock')
       );
@@ -114,16 +137,28 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
       setSpecFuelTank(initialBike.specs.fuelTank);
       setSpecWeightSeat(initialBike.specs.weightSeat);
       setSpecConditionLabel(initialBike.specs.conditionLabel);
+      setSpecFuelSystem(
+        initialBike.specs.fuelSystem ?? initialBike.specs.fuelTank
+      );
+      setSpecCapacityPayload(
+        initialBike.specs.capacityPayload ?? 'Driver + 3 Passengers'
+      );
+      setSpecWeightSpeed(
+        initialBike.specs.weightSpeed ?? initialBike.specs.weightSeat
+      );
       setModel3dUrl(initialBike.model3dUrl ?? '');
       setModel3dName(initialBike.model3dName ?? '');
+      const fallbackPalette = bikeIsTri ? TRICYCLE_COLOR_OPTIONS : COLOR_OPTIONS;
       const colors =
         initialBike.colorOptions && initialBike.colorOptions.length > 0
           ? initialBike.colorOptions
-          : COLOR_OPTIONS;
+          : fallbackPalette;
       setColorOptions(colors);
       setDefaultColorId(initialBike.defaultColorId || colors[0].id);
       setColorImages(initialBike.colorImages ?? {});
     } else {
+      setVehicleType('motorcycle');
+      setFuelType('Petrol');
       setBrand('Bajaj');
       setModel('');
       setSubtitle('Fuel-efficient Nigerian commuter dynamics');
@@ -140,6 +175,9 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
       setSpecFuelTank('11.0 L');
       setSpecWeightSeat('109 kg • 785 mm');
       setSpecConditionLabel('Brand New • 0 km');
+      setSpecFuelSystem('Petrol (10.5 L Tank)');
+      setSpecCapacityPayload('Driver + 3 Passengers');
+      setSpecWeightSpeed('345 kg • 65 km/h');
       setModel3dUrl('');
       setModel3dName('');
       setColorOptions(COLOR_OPTIONS);
@@ -252,19 +290,28 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
       if (url && url.trim()) cleanedColorImages[cid] = url.trim();
     });
 
+    const effectiveCondition: ConditionType =
+      vehicleType === 'tricycle' ? 'Brand New' : condition;
+
     const bikePayload: Motorcycle = {
       id,
       brand,
       brandTags: initialBike?.brandTags,
-      model: model.trim() || 'New Showroom Model',
+      model: model.trim() || 'New Showroom Vehicle',
       subtitle: subtitle.trim() || `${brand} certified machine`,
       category,
-      condition,
+      vehicleType,
+      ...(vehicleType === 'tricycle' ? { fuelType } : {}),
+      condition: effectiveCondition,
       priceNGN: numericNGN,
       priceUSD: Math.max(1, Math.round(numericNGN / rate)),
       marketRangeNGN:
         marketRangeNGN.trim() || `₦${numericNGN.toLocaleString('en-US')}`,
-      image: image.trim() || IMG_COMMUTER_BOXER,
+      image:
+        image.trim() ||
+        (vehicleType === 'tricycle'
+          ? IMG_TRICYCLE_TVS_KING
+          : IMG_COMMUTER_BOXER),
       flipProfile,
       defaultColorId:
         colorOptions.find((c) => c.id === defaultColorId)?.id ??
@@ -273,13 +320,26 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
         engine: specEngine.trim(),
         powerTorque: specPowerTorque.trim(),
         transmission: specTransmission.trim(),
-        fuelTank: specFuelTank.trim(),
-        weightSeat: specWeightSeat.trim(),
+        fuelTank:
+          vehicleType === 'tricycle'
+            ? specFuelSystem.trim() || specFuelTank.trim()
+            : specFuelTank.trim(),
+        weightSeat:
+          vehicleType === 'tricycle'
+            ? specWeightSpeed.trim() || specWeightSeat.trim()
+            : specWeightSeat.trim(),
         conditionLabel:
-          specConditionLabel.trim() ||
-          (condition === 'Brand New'
-            ? 'Brand New • 0 km'
-            : 'Foreign Used (Tokunbo)'),
+          effectiveCondition === 'Brand New'
+            ? specConditionLabel.trim() || 'Brand New • 0 km'
+            : specConditionLabel.trim() || 'Foreign Used (Tokunbo)',
+        ...(vehicleType === 'tricycle'
+          ? {
+              fuelSystem: specFuelSystem.trim() || fuelType,
+              capacityPayload:
+                specCapacityPayload.trim() || 'Driver + 3 Passengers',
+              weightSpeed: specWeightSpeed.trim() || '345 kg • 65 km/h',
+            }
+          : {}),
       },
       defaultGearId: initialBike?.defaultGearId ?? 'gear-dot-helmet',
       inStock: stockStatus === 'In Stock',
@@ -302,7 +362,7 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={initialBike ? 'Edit Motorcycle' : 'Add New Motorcycle'}
+      aria-label={initialBike ? 'Edit Vehicle' : 'Add New Vehicle'}
     >
       <div
         className="w-full max-w-4xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl border border-black/[0.06] max-h-[90vh] flex flex-col overflow-hidden"
@@ -316,18 +376,18 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-[#DC2626]">
-              Motorcycle Inventory Manager
+              Motorcycle &amp; Tricycle Inventory Manager
             </p>
             <h2 className="text-[20px] font-bold text-[#18181B]">
               {initialBike
                 ? `Edit ${initialBike.brand} ${initialBike.model}`
-                : 'Add New Motorcycle'}
+                : 'Add New Vehicle (Bike or Tricycle)'}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close motorcycle form"
+            aria-label="Close vehicle form"
             className="w-9 h-9 rounded-full bg-[#F3F3F5] hover:bg-zinc-200 inline-flex items-center justify-center text-[#18181B] cursor-pointer"
           >
             <X className="w-4 h-4" />
@@ -339,6 +399,71 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
           onSubmit={handleSubmit}
           className="overflow-y-auto p-6 space-y-6"
         >
+          {/* Vehicle Type Segment Selector */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#F3F3F5]">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-bold text-[#18181B]">
+                Vehicle Type:
+              </span>
+              {(['motorcycle', 'tricycle'] as VehicleType[]).map((vt) => (
+                <button
+                  key={vt}
+                  type="button"
+                  onClick={() => {
+                    setVehicleType(vt);
+                    if (vt === 'tricycle') {
+                      setCondition('Brand New');
+                      setSpecConditionLabel('Brand New • 0 km');
+                      if (
+                        category !== 'Tricycles (Passenger)' &&
+                        category !== 'Tricycles (Heavy-Duty / Cargo)'
+                      ) {
+                        setCategory('Tricycles (Passenger)');
+                      }
+                      if (!initialBike) {
+                        setImage(IMG_TRICYCLE_TVS_KING);
+                        setPriceNGN('3300000');
+                        setMarketRangeNGN('₦3,200,000 – ₦3,450,000');
+                        setSpecEngine('198.8cc • 4-Stroke Air-Cooled');
+                        setSpecPowerTorque('10.3 hp • 15.5 Nm');
+                        setSpecTransmission('4-Forward + 1-Reverse');
+                        setColorOptions(TRICYCLE_COLOR_OPTIONS);
+                        setDefaultColorId(TRICYCLE_COLOR_OPTIONS[0].id);
+                      }
+                    } else if (!initialBike) {
+                      setColorOptions(COLOR_OPTIONS);
+                      setDefaultColorId(COLOR_OPTIONS[0].id);
+                    }
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-[12px] font-semibold cursor-pointer transition-colors ${
+                    vehicleType === vt
+                      ? 'bg-[#18181B] text-white'
+                      : 'bg-white text-[#18181B] hover:bg-zinc-100'
+                  }`}
+                >
+                  {vt === 'motorcycle' ? 'Motorcycle (2-Wheel)' : 'Tricycle / Keke (3-Wheel)'}
+                </button>
+              ))}
+            </div>
+
+            {vehicleType === 'tricycle' && (
+              <div className="flex items-center gap-2">
+                <span className="text-[12px] font-semibold text-[#18181B]">
+                  Fuel:
+                </span>
+                <select
+                  value={fuelType}
+                  onChange={(e) => setFuelType(e.target.value as FuelType)}
+                  className="px-3 py-1.5 rounded-full bg-white text-[12px] font-semibold text-[#18181B] border border-black/[0.06] cursor-pointer"
+                >
+                  <option value="Petrol">Petrol</option>
+                  <option value="CNG + Petrol Bi-Fuel">CNG + Petrol Bi-Fuel</option>
+                  <option value="Diesel / CNG">Diesel / CNG</option>
+                </select>
+              </div>
+            )}
+          </div>
+
           {/* Basic Details Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -378,7 +503,18 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as CategoryName)}
+                onChange={(e) => {
+                  const nextCat = e.target.value as CategoryName;
+                  setCategory(nextCat);
+                  if (
+                    nextCat === 'Tricycles (Passenger)' ||
+                    nextCat === 'Tricycles (Heavy-Duty / Cargo)'
+                  ) {
+                    setVehicleType('tricycle');
+                    setCondition('Brand New');
+                    setSpecConditionLabel('Brand New • 0 km');
+                  }
+                }}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#F3F3F5] text-[13.5px] font-medium text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#18181B]"
               >
                 {CATEGORY_LIST.map((c) => (
@@ -394,7 +530,8 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
                 Condition Badge *
               </label>
               <select
-                value={condition}
+                value={vehicleType === 'tricycle' ? 'Brand New' : condition}
+                disabled={vehicleType === 'tricycle'}
                 onChange={(e) => {
                   const next = e.target.value as ConditionType;
                   setCondition(next);
@@ -404,12 +541,14 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
                       : 'Foreign Used (Tokunbo)'
                   );
                 }}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F3F3F5] text-[13.5px] font-medium text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#18181B]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#F3F3F5] text-[13.5px] font-medium text-[#18181B] focus:outline-none focus:ring-2 focus:ring-[#18181B] disabled:opacity-70"
               >
                 <option value="Brand New">Brand New</option>
-                <option value="Foreign Used (Tokunbo)">
-                  Foreign Used (Tokunbo)
-                </option>
+                {vehicleType !== 'tricycle' && (
+                  <option value="Foreign Used (Tokunbo)">
+                    Foreign Used (Tokunbo)
+                  </option>
+                )}
               </select>
             </div>
 
@@ -515,37 +654,61 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-500 mb-1">
-                  4. Fuel Tank
+                  {vehicleType === 'tricycle' ? '4. Fuel System' : '4. Fuel Tank'}
                 </label>
                 <input
                   type="text"
                   required
-                  value={specFuelTank}
-                  onChange={(e) => setSpecFuelTank(e.target.value)}
+                  value={vehicleType === 'tricycle' ? specFuelSystem : specFuelTank}
+                  onChange={(e) =>
+                    vehicleType === 'tricycle'
+                      ? setSpecFuelSystem(e.target.value)
+                      : setSpecFuelTank(e.target.value)
+                  }
                   className="w-full px-3 py-2 rounded-xl bg-white text-[13px] text-[#18181B] border border-black/[0.05] focus:outline-none focus:ring-2 focus:ring-[#18181B]"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-500 mb-1">
-                  5. Weight / Seat
+                  {vehicleType === 'tricycle'
+                    ? '5. Capacity / Payload'
+                    : '5. Weight / Seat'}
                 </label>
                 <input
                   type="text"
                   required
-                  value={specWeightSeat}
-                  onChange={(e) => setSpecWeightSeat(e.target.value)}
+                  value={
+                    vehicleType === 'tricycle'
+                      ? specCapacityPayload
+                      : specWeightSeat
+                  }
+                  onChange={(e) =>
+                    vehicleType === 'tricycle'
+                      ? setSpecCapacityPayload(e.target.value)
+                      : setSpecWeightSeat(e.target.value)
+                  }
                   className="w-full px-3 py-2 rounded-xl bg-white text-[13px] text-[#18181B] border border-black/[0.05] focus:outline-none focus:ring-2 focus:ring-[#18181B]"
                 />
               </div>
               <div>
                 <label className="block text-[11px] font-semibold text-zinc-500 mb-1">
-                  6. Condition Label
+                  {vehicleType === 'tricycle'
+                    ? '6. Weight / Top Speed'
+                    : '6. Condition Label'}
                 </label>
                 <input
                   type="text"
                   required
-                  value={specConditionLabel}
-                  onChange={(e) => setSpecConditionLabel(e.target.value)}
+                  value={
+                    vehicleType === 'tricycle'
+                      ? specWeightSpeed
+                      : specConditionLabel
+                  }
+                  onChange={(e) =>
+                    vehicleType === 'tricycle'
+                      ? setSpecWeightSpeed(e.target.value)
+                      : setSpecConditionLabel(e.target.value)
+                  }
                   className="w-full px-3 py-2 rounded-xl bg-white text-[13px] text-[#18181B] border border-black/[0.05] focus:outline-none focus:ring-2 focus:ring-[#18181B]"
                 />
               </div>
@@ -840,7 +1003,7 @@ export const AdminBikeFormModal: React.FC<AdminBikeFormModalProps> = ({
               type="submit"
               className="px-6 py-2.5 rounded-full bg-[#18181B] hover:bg-[#DC2626] text-white text-[13px] font-semibold transition-colors cursor-pointer"
             >
-              {initialBike ? 'Save Motorcycle Changes' : 'Publish Motorcycle'}
+              {initialBike ? 'Save Vehicle Changes' : 'Publish Vehicle'}
             </button>
           </div>
         </form>
