@@ -1,0 +1,6 @@
+{
+  "name": "Osas Motorcycle",
+  "description": "Authorized dealer of brand-new commercial, dispatch, commuter, and sport motorcycles plus genuine spare parts across Benin City and Nigeria.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
