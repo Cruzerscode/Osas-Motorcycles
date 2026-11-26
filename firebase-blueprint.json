@@ -1,0 +1,605 @@
+{
+  "entities": {
+    "Motorcycle": {
+      "title": "Motorcycle",
+      "description": "Showroom motorcycle inventory item (Brand New or Foreign Used Tokunbo) with pricing, specs, 3D model URL, and color finishes.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "brand": {
+          "type": "string",
+          "enum": [
+            "Bajaj",
+            "TVS",
+            "Honda",
+            "Hero",
+            "Suzuki",
+            "Qlink",
+            "Daylong",
+            "Haojue",
+            "Yamaha"
+          ]
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Commuter / Commercial",
+            "Dispatch / Off-Road",
+            "Ladies' Cubs & Scooters",
+            "600cc Power Bikes"
+          ]
+        },
+        "condition": {
+          "type": "string",
+          "enum": ["Brand New", "Foreign Used (Tokunbo)"]
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "priceNGN": {
+          "type": "number"
+        },
+        "priceUSD": {
+          "type": "number"
+        },
+        "marketRangeNGN": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "image": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "flipProfile": {
+          "type": "boolean"
+        },
+        "defaultColorId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "specs": {
+          "type": "object"
+        },
+        "defaultGearId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "inStock": {
+          "type": "boolean"
+        },
+        "stockStatus": {
+          "type": "string",
+          "enum": ["In Stock", "Out of Stock", "SOLD"]
+        },
+        "model3dUrl": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "model3dName": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "brandTags": {
+          "type": "array"
+        },
+        "colorOptions": {
+          "type": "array"
+        },
+        "colorImages": {
+          "type": "object"
+        },
+        "sortOrder": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "model",
+        "brand",
+        "category",
+        "condition",
+        "subtitle",
+        "priceNGN",
+        "priceUSD",
+        "marketRangeNGN",
+        "image",
+        "defaultColorId",
+        "specs",
+        "defaultGearId",
+        "inStock"
+      ]
+    },
+    "SparePart": {
+      "title": "SparePart",
+      "description": "Genuine OEM or heavy-duty aftermarket motorcycle spare part with SKU, compatibility, variants, and live stock count.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "sku": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "Engine & Transmission",
+            "Brakes & Suspension",
+            "Electrical & Lighting",
+            "Tires, Tubes & Wheels",
+            "Bodywork & Dispatch Racks",
+            "Service & Oils"
+          ]
+        },
+        "fitsSummary": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "compatibleBrands": {
+          "type": "array"
+        },
+        "compatibleModels": {
+          "type": "array"
+        },
+        "priceNGN": {
+          "type": "number"
+        },
+        "variants": {
+          "type": "array"
+        },
+        "details": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "specs": {
+          "type": "array"
+        },
+        "installationNotes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "image": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "inStock": {
+          "type": "boolean"
+        },
+        "stockQuantity": {
+          "type": "number"
+        },
+        "stockStatus": {
+          "type": "string",
+          "enum": ["In Stock", "Low Stock", "Out of Stock"]
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "sku",
+        "name",
+        "category",
+        "fitsSummary",
+        "compatibleBrands",
+        "compatibleModels",
+        "priceNGN",
+        "details",
+        "specs",
+        "installationNotes",
+        "image",
+        "inStock"
+      ]
+    },
+    "ShowroomPublicConfig": {
+      "title": "ShowroomPublicConfig",
+      "description": "Publicly readable showroom contact, currency exchange rate, and financing defaults (excludes adminPin).",
+      "type": "object",
+      "properties": {
+        "whatsappNumber": {
+          "type": "string",
+          "minLength": 7,
+          "maxLength": 32
+        },
+        "showroomAddress": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 240
+        },
+        "defaultCurrency": {
+          "type": "string",
+          "enum": ["NGN", "USD"]
+        },
+        "exchangeRateNGN": {
+          "type": "number"
+        },
+        "financingInterestRate": {
+          "type": "number"
+        },
+        "defaultDownPaymentPercent": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "whatsappNumber",
+        "showroomAddress",
+        "defaultCurrency",
+        "exchangeRateNGN",
+        "financingInterestRate",
+        "defaultDownPaymentPercent"
+      ]
+    },
+    "UserGarage": {
+      "title": "UserGarage",
+      "description": "Private authenticated customer profile and saved motorcycle IDs.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 180
+        },
+        "savedIds": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "savedIds", "createdAt", "updatedAt"]
+    },
+    "CustomerOrder": {
+      "title": "CustomerOrder",
+      "description": "Motorcycle reservation or spare parts/gear order submitted by an authenticated customer.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "totalFormatted": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "Pending",
+            "Confirmed",
+            "Ready for Pickup",
+            "Dispatched",
+            "Delivered",
+            "Cancelled"
+          ]
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "whatsapp": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 40
+        },
+        "deliveryLocation": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "paymentMethod": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "colorName": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "quantity": {
+          "type": "number"
+        },
+        "totalNGN": {
+          "type": "number"
+        },
+        "orderType": {
+          "type": "string",
+          "enum": ["Motorcycle", "Spare Parts & Gear"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "date",
+        "title",
+        "detail",
+        "totalFormatted",
+        "status",
+        "customerName",
+        "whatsapp",
+        "orderType",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TestRideBooking": {
+      "title": "TestRideBooking",
+      "description": "Showroom inspection or test ride appointment booked by an authenticated customer.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "timeSlot": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "showroom": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "bikeTitle": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "riderName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "whatsapp": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 40
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Scheduled", "Completed", "Cancelled"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "date",
+        "timeSlot",
+        "showroom",
+        "bikeTitle",
+        "riderName",
+        "whatsapp",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "TradeInLead": {
+      "title": "TradeInLead",
+      "description": "Trade-in appraisal submission or spare-part request submitted by an authenticated customer.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "submittedAt": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "brand": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "year": {
+          "type": "string",
+          "maxLength": 16
+        },
+        "mileage": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "condition": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "whatsapp": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 40
+        },
+        "targetBike": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "estimatedRange": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "status": {
+          "type": "string",
+          "enum": ["New Lead", "Contacted", "Inspected", "Closed"]
+        },
+        "type": {
+          "type": "string",
+          "enum": ["Trade-In", "Part Request"]
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "submittedAt",
+        "brand",
+        "model",
+        "year",
+        "mileage",
+        "condition",
+        "whatsapp",
+        "targetBike",
+        "estimatedRange",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "AdminMember": {
+      "title": "AdminMember",
+      "description": "Authorized showroom dealer admin account record.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 180
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["email", "role", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/motorcycles/{bikeId}": {
+      "schema": { "$ref": "#/entities/Motorcycle" },
+      "description": "Publicly readable motorcycle showroom catalog; admin-only writes."
+    },
+    "/spareParts/{partId}": {
+      "schema": { "$ref": "#/entities/SparePart" },
+      "description": "Publicly readable OEM spare parts catalog; admin-only writes."
+    },
+    "/showroom/{docId}": {
+      "schema": { "$ref": "#/entities/ShowroomPublicConfig" },
+      "description": "Public showroom configuration document (/showroom/public); admin-only writes."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserGarage" },
+      "description": "Owner-isolated customer profile and saved motorcycle IDs."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/CustomerOrder" },
+      "description": "Authenticated customer motorcycle & parts orders; owner read/create, admin full management."
+    },
+    "/testRides/{rideId}": {
+      "schema": { "$ref": "#/entities/TestRideBooking" },
+      "description": "Authenticated customer showroom test ride bookings; owner read/create, admin full management."
+    },
+    "/tradeIns/{leadId}": {
+      "schema": { "$ref": "#/entities/TradeInLead" },
+      "description": "Authenticated customer trade-in appraisals; owner read/create, admin full management."
+    },
+    "/admins/{uid}": {
+      "schema": { "$ref": "#/entities/AdminMember" },
+      "description": "Authorized dealer admin directory."
+    }
+  }
+}

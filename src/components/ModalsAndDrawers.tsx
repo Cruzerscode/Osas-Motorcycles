@@ -1170,6 +1170,13 @@ interface AccountDrawerProps {
   currency: CurrencyCode;
   onToggleCurrency: (c: CurrencyCode) => void;
   onSelectSavedBike: (bikeId: string) => void;
+  authUser?: {
+    uid: string;
+    email?: string | null;
+    displayName?: string | null;
+  } | null;
+  onSignInGoogle?: () => void;
+  onSignOut?: () => void;
 }
 
 export const AccountDrawer: React.FC<AccountDrawerProps> = ({
@@ -1182,6 +1189,9 @@ export const AccountDrawer: React.FC<AccountDrawerProps> = ({
   currency,
   onToggleCurrency,
   onSelectSavedBike,
+  authUser,
+  onSignInGoogle,
+  onSignOut,
 }) => {
   if (!open) return null;
 
@@ -1201,10 +1211,12 @@ export const AccountDrawer: React.FC<AccountDrawerProps> = ({
           <div className="flex items-center justify-between pb-4 border-b border-zinc-100">
             <div>
               <h2 className="text-[18px] font-bold text-[#18181B]">
-                Rider Garage & Activity
+                Rider Garage &amp; Activity
               </h2>
               <p className="text-[12px] text-[#71717A]">
-                Saved automatically in your browser
+                {authUser
+                  ? `Synced to cloud · ${authUser.email || authUser.displayName}`
+                  : 'Sign in with Google to sync across devices'}
               </p>
             </div>
             <button
@@ -1216,6 +1228,45 @@ export const AccountDrawer: React.FC<AccountDrawerProps> = ({
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Cloud Account Sync */}
+          {(onSignInGoogle || authUser) && (
+            <div className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-[#F3F3F5]">
+              <div className="min-w-0">
+                <div className="text-[12.5px] font-semibold text-[#18181B] truncate">
+                  {authUser
+                    ? authUser.displayName || authUser.email || 'Signed In'
+                    : 'Cloud Garage Sync'}
+                </div>
+                <div className="text-[11px] text-[#71717A] truncate">
+                  {authUser
+                    ? 'Orders, test rides & saved bikes synced'
+                    : 'Save orders & bikes to your account'}
+                </div>
+              </div>
+              {authUser ? (
+                onSignOut && (
+                  <button
+                    type="button"
+                    onClick={onSignOut}
+                    className="px-3.5 py-1.5 rounded-full bg-white hover:bg-zinc-200 text-[11.5px] font-semibold text-[#18181B] border border-black/[0.06] shrink-0 cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
+                )
+              ) : (
+                onSignInGoogle && (
+                  <button
+                    type="button"
+                    onClick={onSignInGoogle}
+                    className="px-3.5 py-1.5 rounded-full bg-[#18181B] hover:bg-[#DC2626] text-[11.5px] font-semibold text-white shrink-0 transition-colors cursor-pointer"
+                  >
+                    Sign in with Google
+                  </button>
+                )
+              )}
+            </div>
+          )}
 
           {/* Currency Preference */}
           <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#F3F3F5]">

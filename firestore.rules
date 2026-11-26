@@ -1,0 +1,392 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ---------------------------------------------------------
+    // Hardened Global Helpers
+    // ---------------------------------------------------------
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isBootstrappedAdmin() {
+      return isVerified() && request.auth.token.email == 'willosezele@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerified() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isOwner(userId) {
+      return isVerified() && request.auth.uid == userId;
+    }
+
+    function isNonEmptyString(val, maxLen) {
+      return val is string && val.size() >= 1 && val.size() <= maxLen;
+    }
+
+    function isBoundedString(val, maxLen) {
+      return val is string && val.size() <= maxLen;
+    }
+
+    // ---------------------------------------------------------
+    // Validation Blueprints
+    // ---------------------------------------------------------
+    function isValidMotorcycle(data) {
+      return data.keys().hasAll([
+        'id', 'model', 'brand', 'category', 'condition', 'subtitle',
+        'priceNGN', 'priceUSD', 'marketRangeNGN', 'image',
+        'defaultColorId', 'specs', 'defaultGearId', 'inStock'
+      ]) && data.keys().hasOnly([
+        'id', 'model', 'brand', 'brandTags', 'category', 'condition',
+        'subtitle', 'priceNGN', 'priceUSD', 'marketRangeNGN', 'image',
+        'flipProfile', 'defaultColorId', 'specs', 'defaultGearId',
+        'inStock', 'stockStatus', 'model3dUrl', 'model3dName',
+        'colorOptions', 'colorImages', 'sortOrder', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      isNonEmptyString(data.model, 120) &&
+      data.brand in ['Bajaj', 'TVS', 'Honda', 'Hero', 'Suzuki', 'Qlink', 'Daylong', 'Haojue', 'Yamaha'] &&
+      data.category in ['Commuter / Commercial', 'Dispatch / Off-Road', "Ladies' Cubs & Scooters", '600cc Power Bikes'] &&
+      data.condition in ['Brand New', 'Foreign Used (Tokunbo)'] &&
+      isBoundedString(data.subtitle, 200) &&
+      data.priceNGN is number && data.priceNGN >= 0 &&
+      data.priceUSD is number && data.priceUSD >= 0 &&
+      isBoundedString(data.marketRangeNGN, 80) &&
+      isBoundedString(data.image, 1000) &&
+      isBoundedString(data.defaultColorId, 64) &&
+      data.specs is map &&
+      isBoundedString(data.defaultGearId, 64) &&
+      data.inStock is bool &&
+      (!('flipProfile' in data) || data.flipProfile is bool) &&
+      (!('stockStatus' in data) || data.stockStatus in ['In Stock', 'Out of Stock', 'SOLD']) &&
+      (!('model3dUrl' in data) || isBoundedString(data.model3dUrl, 1000)) &&
+      (!('model3dName' in data) || isBoundedString(data.model3dName, 160)) &&
+      (!('brandTags' in data) || (data.brandTags is list && data.brandTags.size() <= 10 && (data.brandTags.size() == 0 || isBoundedString(data.brandTags[0], 40)))) &&
+      (!('colorOptions' in data) || (data.colorOptions is list && data.colorOptions.size() <= 12 && (data.colorOptions.size() == 0 || data.colorOptions[0] is map))) &&
+      (!('colorImages' in data) || data.colorImages is map) &&
+      (!('sortOrder' in data) || data.sortOrder is number) &&
+      (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidSparePart(data) {
+      return data.keys().hasAll([
+        'id', 'sku', 'name', 'category', 'fitsSummary', 'compatibleBrands',
+        'compatibleModels', 'priceNGN', 'details', 'specs',
+        'installationNotes', 'image', 'inStock'
+      ]) && data.keys().hasOnly([
+        'id', 'sku', 'name', 'category', 'fitsSummary', 'compatibleBrands',
+        'compatibleModels', 'priceNGN', 'variants', 'details', 'specs',
+        'installationNotes', 'image', 'inStock', 'stockQuantity',
+        'stockStatus', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      isNonEmptyString(data.sku, 64) &&
+      isNonEmptyString(data.name, 160) &&
+      data.category in [
+        'Engine & Transmission',
+        'Brakes & Suspension',
+        'Electrical & Lighting',
+        'Tires, Tubes & Wheels',
+        'Bodywork & Dispatch Racks',
+        'Service & Oils'
+      ] &&
+      isBoundedString(data.fitsSummary, 240) &&
+      data.compatibleBrands is list && data.compatibleBrands.size() <= 10 &&
+      (data.compatibleBrands.size() == 0 || isBoundedString(data.compatibleBrands[0], 64)) &&
+      data.compatibleModels is list && data.compatibleModels.size() <= 20 &&
+      (data.compatibleModels.size() == 0 || isBoundedString(data.compatibleModels[0], 100)) &&
+      data.priceNGN is number && data.priceNGN >= 0 &&
+      isBoundedString(data.details, 600) &&
+      data.specs is list && data.specs.size() <= 16 &&
+      (data.specs.size() == 0 || data.specs[0] is map) &&
+      isBoundedString(data.installationNotes, 500) &&
+      isBoundedString(data.image, 1000) &&
+      data.inStock is bool &&
+      (!('variants' in data) || (data.variants is list && data.variants.size() <= 10 && (data.variants.size() == 0 || data.variants[0] is map))) &&
+      (!('stockQuantity' in data) || (data.stockQuantity is number && data.stockQuantity >= 0)) &&
+      (!('stockStatus' in data) || data.stockStatus in ['In Stock', 'Low Stock', 'Out of Stock']) &&
+      (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidShowroomPublic(data) {
+      return data.keys().hasAll([
+        'whatsappNumber', 'showroomAddress', 'defaultCurrency',
+        'exchangeRateNGN', 'financingInterestRate', 'defaultDownPaymentPercent'
+      ]) && data.keys().hasOnly([
+        'whatsappNumber', 'showroomAddress', 'defaultCurrency',
+        'exchangeRateNGN', 'financingInterestRate', 'defaultDownPaymentPercent',
+        'updatedAt'
+      ]) &&
+      isNonEmptyString(data.whatsappNumber, 32) &&
+      isNonEmptyString(data.showroomAddress, 240) &&
+      data.defaultCurrency in ['NGN', 'USD'] &&
+      data.exchangeRateNGN is number && data.exchangeRateNGN > 0 &&
+      data.financingInterestRate is number && data.financingInterestRate >= 0 && data.financingInterestRate <= 100 &&
+      data.defaultDownPaymentPercent is number && data.defaultDownPaymentPercent >= 0 && data.defaultDownPaymentPercent <= 100 &&
+      (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    function isValidUserGarage(data, userId) {
+      return data.keys().hasAll(['userId', 'savedIds', 'createdAt', 'updatedAt']) &&
+      data.keys().hasOnly(['userId', 'displayName', 'email', 'savedIds', 'createdAt', 'updatedAt']) &&
+      isValidId(data.userId) &&
+      data.userId == userId &&
+      data.savedIds is list && data.savedIds.size() <= 50 &&
+      (data.savedIds.size() == 0 || isValidId(data.savedIds[0])) &&
+      (!('displayName' in data) || isBoundedString(data.displayName, 120)) &&
+      (!('email' in data) || isBoundedString(data.email, 180)) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll([
+        'id', 'userId', 'date', 'title', 'detail', 'totalFormatted',
+        'status', 'customerName', 'whatsapp', 'orderType', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'id', 'userId', 'date', 'title', 'detail', 'totalFormatted', 'status',
+        'customerName', 'whatsapp', 'deliveryLocation', 'paymentMethod',
+        'colorName', 'quantity', 'totalNGN', 'orderType', 'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      isValidId(data.userId) &&
+      isBoundedString(data.date, 40) &&
+      isNonEmptyString(data.title, 160) &&
+      isBoundedString(data.detail, 400) &&
+      isBoundedString(data.totalFormatted, 64) &&
+      data.status in ['Pending', 'Confirmed', 'Ready for Pickup', 'Dispatched', 'Delivered', 'Cancelled'] &&
+      isNonEmptyString(data.customerName, 120) &&
+      isNonEmptyString(data.whatsapp, 40) &&
+      data.orderType in ['Motorcycle', 'Spare Parts & Gear'] &&
+      (!('deliveryLocation' in data) || isBoundedString(data.deliveryLocation, 240)) &&
+      (!('paymentMethod' in data) || isBoundedString(data.paymentMethod, 80)) &&
+      (!('colorName' in data) || isBoundedString(data.colorName, 64)) &&
+      (!('quantity' in data) || (data.quantity is number && data.quantity >= 1 && data.quantity <= 100)) &&
+      (!('totalNGN' in data) || (data.totalNGN is number && data.totalNGN >= 0)) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidTestRide(data) {
+      return data.keys().hasAll([
+        'id', 'userId', 'date', 'timeSlot', 'showroom', 'bikeTitle',
+        'riderName', 'whatsapp', 'status', 'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'id', 'userId', 'date', 'timeSlot', 'showroom', 'bikeTitle',
+        'riderName', 'whatsapp', 'status', 'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      isValidId(data.userId) &&
+      isBoundedString(data.date, 40) &&
+      isBoundedString(data.timeSlot, 40) &&
+      isBoundedString(data.showroom, 120) &&
+      isBoundedString(data.bikeTitle, 160) &&
+      isNonEmptyString(data.riderName, 120) &&
+      isNonEmptyString(data.whatsapp, 40) &&
+      data.status in ['Scheduled', 'Completed', 'Cancelled'] &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidTradeIn(data) {
+      return data.keys().hasAll([
+        'id', 'userId', 'submittedAt', 'brand', 'model', 'year', 'mileage',
+        'condition', 'whatsapp', 'targetBike', 'estimatedRange', 'status',
+        'createdAt', 'updatedAt'
+      ]) && data.keys().hasOnly([
+        'id', 'userId', 'submittedAt', 'brand', 'model', 'year', 'mileage',
+        'condition', 'whatsapp', 'targetBike', 'estimatedRange', 'status',
+        'type', 'notes', 'createdAt', 'updatedAt'
+      ]) &&
+      isValidId(data.id) &&
+      isValidId(data.userId) &&
+      isBoundedString(data.submittedAt, 40) &&
+      isBoundedString(data.brand, 64) &&
+      isBoundedString(data.model, 120) &&
+      isBoundedString(data.year, 16) &&
+      isBoundedString(data.mileage, 32) &&
+      isBoundedString(data.condition, 64) &&
+      isNonEmptyString(data.whatsapp, 40) &&
+      isBoundedString(data.targetBike, 160) &&
+      isBoundedString(data.estimatedRange, 120) &&
+      data.status in ['New Lead', 'Contacted', 'Inspected', 'Closed'] &&
+      (!('type' in data) || data.type in ['Trade-In', 'Part Request']) &&
+      (!('notes' in data) || isBoundedString(data.notes, 400)) &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidAdminMember(data) {
+      return data.keys().hasAll(['email', 'role', 'createdAt']) &&
+      data.keys().hasOnly(['email', 'role', 'createdAt']) &&
+      isNonEmptyString(data.email, 180) &&
+      data.role == 'admin' &&
+      data.createdAt is timestamp;
+    }
+
+    // ---------------------------------------------------------
+    // Collection Match Rules
+    // ---------------------------------------------------------
+
+    // Health-check document (get-only, no data exposed)
+    match /test/{docId} {
+      allow get: if docId == 'connection';
+      allow list, create, update, delete: if false;
+    }
+
+    // Public Motorcycle Showroom Catalog
+    match /motorcycles/{bikeId} {
+      allow get: if isValidId(bikeId);
+      allow list: if true;
+      allow create: if isValidId(bikeId) && isAdmin() && isValidMotorcycle(incoming()) && incoming().id == bikeId;
+      allow update: if isValidId(bikeId) && isAdmin() && isValidMotorcycle(incoming()) && incoming().id == existing().id;
+      allow delete: if isValidId(bikeId) && isAdmin();
+    }
+
+    // Public Genuine Spare Parts Catalog
+    match /spareParts/{partId} {
+      allow get: if isValidId(partId);
+      allow list: if true;
+      allow create: if isValidId(partId) && isAdmin() && isValidSparePart(incoming()) && incoming().id == partId;
+      allow update: if isValidId(partId) && isAdmin() && isValidSparePart(incoming()) && incoming().id == existing().id;
+      allow delete: if isValidId(partId) && isAdmin();
+    }
+
+    // Public Showroom Settings (excludes adminPin)
+    match /showroom/{docId} {
+      allow get: if docId == 'public';
+      allow list: if false;
+      allow create: if docId == 'public' && isAdmin() && isValidShowroomPublic(incoming());
+      allow update: if docId == 'public' && isAdmin() && isValidShowroomPublic(incoming());
+      allow delete: if false;
+    }
+
+    // Private User Garage (PII isolated to owner or admin)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(userId) && isOwner(userId) &&
+        isValidUserGarage(incoming(), userId) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(userId) && isValidUserGarage(incoming(), userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            isOwner(userId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['savedIds', 'displayName', 'email', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(userId) && isAdmin();
+    }
+
+    // Customer Motorcycle & Spare Parts Orders
+    match /orders/{orderId} {
+      allow get: if isValidId(orderId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isValidId(orderId) && isVerified() &&
+        isValidOrder(incoming()) &&
+        incoming().id == orderId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'Pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(orderId) && isVerified() &&
+        isValidOrder(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            existing().userId == request.auth.uid &&
+            existing().status == 'Pending' &&
+            incoming().status == 'Cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(orderId) && isAdmin();
+    }
+
+    // Customer Test Ride Bookings
+    match /testRides/{rideId} {
+      allow get: if isValidId(rideId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isValidId(rideId) && isVerified() &&
+        isValidTestRide(incoming()) &&
+        incoming().id == rideId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'Scheduled' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(rideId) && isVerified() &&
+        isValidTestRide(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          isAdmin() || (
+            existing().userId == request.auth.uid &&
+            existing().status == 'Scheduled' &&
+            incoming().status == 'Cancelled' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if isValidId(rideId) && isAdmin();
+    }
+
+    // Customer Trade-In & Part Request Leads
+    match /tradeIns/{leadId} {
+      allow get: if isValidId(leadId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrappedAdmin());
+      allow create: if isValidId(leadId) && isVerified() &&
+        isValidTradeIn(incoming()) &&
+        incoming().id == leadId &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'New Lead' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(leadId) && isVerified() &&
+        isValidTradeIn(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+      allow delete: if isValidId(leadId) && isAdmin();
+    }
+
+    // Dealer Admin Directory
+    match /admins/{uid} {
+      allow get: if isValidId(uid) && isSignedIn() && (request.auth.uid == uid || isBootstrappedAdmin());
+      allow list: if isBootstrappedAdmin();
+      allow create: if isValidId(uid) && isBootstrappedAdmin() && isValidAdminMember(incoming()) && incoming().createdAt == request.time;
+      allow update: if isValidId(uid) && isBootstrappedAdmin() && isValidAdminMember(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isValidId(uid) && isBootstrappedAdmin();
+    }
+  }
+}

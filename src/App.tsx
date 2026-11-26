@@ -1,4 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { User, onAuthStateChanged } from 'firebase/auth';
+import { collection, getDocs, limit, query } from 'firebase/firestore';
 import { BentoDashboard } from './components/BentoDashboard';
 import { HeroStage } from './components/HeroStage';
 import { InventoryAndAtelier } from './components/InventoryAndAtelier';
@@ -38,6 +40,28 @@ import {
   SPARE_PARTS,
   SparePart,
 } from './data/spareParts';
+import { auth, db, signInWithGoogle, signOutFirebase } from './firebase';
+import {
+  checkIsCloudAdmin,
+  deleteMotorcycleFromDb,
+  deleteOrderFromDb,
+  deleteSparePartFromDb,
+  deleteTestRideFromDb,
+  deleteTradeInFromDb,
+  saveMotorcycleToDb,
+  saveOrderToDb,
+  saveShowroomPublicToDb,
+  saveSparePartToDb,
+  saveTestRideToDb,
+  saveTradeInToDb,
+  seedCatalogToDb,
+  subscribeAuthenticatedUserData,
+  subscribePublicCatalog,
+  syncUserGarageToDb,
+  updateOrderStatusInDb,
+  updateTestRideStatusInDb,
+  updateTradeInStatusInDb,
+} from './services/firestoreStore';
 
 const AdminAuthModal = lazy(() =>
   import('./components/AdminAuthModal').then((m) => ({
@@ -155,6 +179,10 @@ export default function App() {
   );
 
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [isCloudAdmin, setIsCloudAdmin] = useState(false);
+  const [isBootstrappedAdmin, setIsBootstrappedAdmin] = useState(false);
   const [adminAuthOpen, setAdminAuthOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
@@ -177,6 +205,102 @@ export default function App() {
     topic: 'service',
     title: '',
   });
+
+  // Track Firebase Auth state and verify cloud admin privileges
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      setAuthUser(user);
+      if (user) {
+        const status = await checkIsCloudAdmin(
+          user.uid,
+          user.email,
+          user.emailVerified
+        );
+        setIsCloudAdmin(status.isAdmin);
+        setIsBootstrappedAdmin(status.isBootstrapped);
+      } else {
+        setIsCloudAdmin(false);
+        setIsBootstrappedAdmin(false);
+      }
+      setAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Subscribe to public showroom catalog (motorcycles, spare parts, showroom/public)
+  useEffect(() => {
+    const unsubscribe = subscribePublicCatalog({
+      onMotorcycles: (cloudBikes) => {
+        setMotorcycles(cloudBikes);
+      },
+      onSpareParts: (cloudParts) => {
+        setSpareParts(cloudParts);
+      },
+      onShowroomPublic: (publicCfg) => {
+        setSettings((prev) => ({
+          ...prev,
+          whatsappNumber: publicCfg.whatsappNumber ?? prev.whatsappNumber,
+          showroomAddress: publicCfg.showroomAddress ?? prev.showroomAddress,
+          defaultCurrency: publicCfg.defaultCurrency ?? prev.defaultCurrency,
+          exchangeRateNGN: publicCfg.exchangeRateNGN ?? prev.exchangeRateNGN,
+          financingInterestRate:
+            publicCfg.financingInterestRate ?? prev.financingInterestRate,
+          defaultDownPaymentPercent:
+            publicCfg.defaultDownPaymentPercent ??
+            prev.defaultDownPaymentPercent,
+        }));
+      },
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Only attach user/admin private Firestore listeners when auth is ready & signed in
+  useEffect(() => {
+    if (!authReady || !authUser) return;
+
+    const unsubscribe = subscribeAuthenticatedUserData(
+      authUser.uid,
+      isBootstrappedAdmin,
+      {
+        onSavedIds: (cloudSavedIds) => {
+          setSavedIds(cloudSavedIds);
+        },
+        onOrders: (cloudOrders) => {
+          setOrders(cloudOrders);
+        },
+        onTestRides: (cloudRides) => {
+          setTestRides(cloudRides);
+        },
+        onTradeIns: (cloudLeads) => {
+          setTradeIns(cloudLeads);
+        },
+      }
+    );
+
+    return () => unsubscribe();
+  }, [authReady, authUser, isBootstrappedAdmin]);
+
+  // Seed initial showroom catalog to Firestore once when a cloud admin connects to an empty database
+  useEffect(() => {
+    if (!authReady || !isCloudAdmin) return;
+    let active = true;
+    const ensureInitialSeed = async () => {
+      try {
+        const snap = await getDocs(
+          query(collection(db, 'motorcycles'), limit(1))
+        );
+        if (active && snap.empty) {
+          await seedCatalogToDb(motorcycles, spareParts, settings);
+        }
+      } catch {
+        // ignore if offline; rules/ErrorBoundary handle persistent errors
+      }
+    };
+    void ensureInitialSeed();
+    return () => {
+      active = false;
+    };
+  }, [authReady, isCloudAdmin]);
 
   // Defer non-critical carousel image preloading until browser idle after first paint
   useEffect(() => {
@@ -447,11 +571,15 @@ export default function App() {
   };
 
   const handleToggleSave = (bikeId: string) => {
-    setSavedIds((prev) =>
-      prev.includes(bikeId)
+    setSavedIds((prev) => {
+      const next = prev.includes(bikeId)
         ? prev.filter((id) => id !== bikeId)
-        : [...prev, bikeId]
-    );
+        : [...prev, bikeId];
+      if (authUser && authUser.emailVerified) {
+        void syncUserGarageToDb(next);
+      }
+      return next;
+    });
   };
 
   const handleLoadOnStage = (bikeId: string) => {
@@ -498,6 +626,10 @@ export default function App() {
       return [bike, ...prev];
     });
     setActiveBikeId(bike.id);
+    if (isCloudAdmin) {
+      const idx = motorcycles.findIndex((b) => b.id === bike.id);
+      void saveMotorcycleToDb(bike, idx >= 0 ? idx : 0);
+    }
   };
 
   const handleDeleteBike = (bikeId: string) => {
@@ -509,6 +641,9 @@ export default function App() {
       return next;
     });
     setSavedIds((prev) => prev.filter((id) => id !== bikeId));
+    if (isCloudAdmin) {
+      void deleteMotorcycleFromDb(bikeId);
+    }
   };
 
   const handleUpdateBikeStockStatus = (
@@ -516,11 +651,18 @@ export default function App() {
     status: BikeStockStatus
   ) => {
     setMotorcycles((prev) =>
-      prev.map((b) =>
-        b.id === bikeId
-          ? { ...b, stockStatus: status, inStock: status === 'In Stock' }
-          : b
-      )
+      prev.map((b) => {
+        if (b.id !== bikeId) return b;
+        const updated = {
+          ...b,
+          stockStatus: status,
+          inStock: status === 'In Stock',
+        };
+        if (isCloudAdmin) {
+          void saveMotorcycleToDb(updated);
+        }
+        return updated;
+      })
     );
   };
 
@@ -528,7 +670,13 @@ export default function App() {
     setMotorcycles((prev) => {
       const target = prev.find((b) => b.id === bikeId);
       if (!target) return prev;
-      return [target, ...prev.filter((b) => b.id !== bikeId)];
+      const reordered = [target, ...prev.filter((b) => b.id !== bikeId)];
+      if (isCloudAdmin) {
+        reordered.forEach((b, idx) => {
+          void saveMotorcycleToDb(b, idx);
+        });
+      }
+      return reordered;
     });
     setSelectedBrand('All');
     setSelectedCategory('All');
@@ -543,10 +691,16 @@ export default function App() {
       }
       return [part, ...prev];
     });
+    if (isCloudAdmin) {
+      void saveSparePartToDb(part);
+    }
   };
 
   const handleDeletePart = (partId: string) => {
     setSpareParts((prev) => prev.filter((p) => p.id !== partId));
+    if (isCloudAdmin) {
+      void deleteSparePartFromDb(partId);
+    }
   };
 
   const handleAdjustPartStock = (partId: string, delta: number) => {
@@ -561,41 +715,55 @@ export default function App() {
             : nextQty <= 5
             ? 'Low Stock'
             : 'In Stock';
-        return {
+        const updated: SparePart = {
           ...p,
           stockQuantity: nextQty,
           stockStatus: nextStatus,
           inStock: nextQty > 0,
         };
+        if (isCloudAdmin) {
+          void saveSparePartToDb(updated);
+        }
+        return updated;
       })
     );
   };
 
   const handleUpdatePartPrice = (partId: string, priceNGN: number) => {
     setSpareParts((prev) =>
-      prev.map((p) => (p.id === partId ? { ...p, priceNGN } : p))
+      prev.map((p) => {
+        if (p.id !== partId) return p;
+        const updated = { ...p, priceNGN };
+        if (isCloudAdmin) {
+          void saveSparePartToDb(updated);
+        }
+        return updated;
+      })
     );
   };
 
   const handleUpdatePartStatus = (partId: string, status: PartStockStatus) => {
     setSpareParts((prev) =>
-      prev.map((p) =>
-        p.id === partId
-          ? {
-              ...p,
-              stockStatus: status,
-              inStock: status !== 'Out of Stock',
-              stockQuantity:
-                status === 'Out of Stock'
-                  ? 0
-                  : p.stockQuantity && p.stockQuantity > 0
-                  ? p.stockQuantity
-                  : status === 'Low Stock'
-                  ? 3
-                  : 15,
-            }
-          : p
-      )
+      prev.map((p) => {
+        if (p.id !== partId) return p;
+        const updated: SparePart = {
+          ...p,
+          stockStatus: status,
+          inStock: status !== 'Out of Stock',
+          stockQuantity:
+            status === 'Out of Stock'
+              ? 0
+              : p.stockQuantity && p.stockQuantity > 0
+              ? p.stockQuantity
+              : status === 'Low Stock'
+              ? 3
+              : 15,
+        };
+        if (isCloudAdmin) {
+          void saveSparePartToDb(updated);
+        }
+        return updated;
+      })
     );
   };
 
@@ -606,10 +774,16 @@ export default function App() {
     setOrders((prev) =>
       prev.map((o) => (o.id === orderId ? { ...o, status } : o))
     );
+    if (isCloudAdmin) {
+      void updateOrderStatusInDb(orderId, status);
+    }
   };
 
   const handleDeleteOrder = (orderId: string) => {
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    if (isCloudAdmin) {
+      void deleteOrderFromDb(orderId);
+    }
   };
 
   const handleUpdateTestRideStatus = (
@@ -619,10 +793,16 @@ export default function App() {
     setTestRides((prev) =>
       prev.map((r) => (r.id === rideId ? { ...r, status } : r))
     );
+    if (isCloudAdmin) {
+      void updateTestRideStatusInDb(rideId, status);
+    }
   };
 
   const handleDeleteTestRide = (rideId: string) => {
     setTestRides((prev) => prev.filter((r) => r.id !== rideId));
+    if (isCloudAdmin) {
+      void deleteTestRideFromDb(rideId);
+    }
   };
 
   const handleUpdateTradeInStatus = (
@@ -632,10 +812,16 @@ export default function App() {
     setTradeIns((prev) =>
       prev.map((t) => (t.id === leadId ? { ...t, status } : t))
     );
+    if (isCloudAdmin) {
+      void updateTradeInStatusInDb(leadId, status);
+    }
   };
 
   const handleDeleteTradeIn = (leadId: string) => {
     setTradeIns((prev) => prev.filter((t) => t.id !== leadId));
+    if (isCloudAdmin) {
+      void deleteTradeInFromDb(leadId);
+    }
   };
 
   const handleSaveSettings = (next: ShowroomSettings) => {
@@ -648,6 +834,9 @@ export default function App() {
         priceUSD: Math.max(1, Math.round(b.priceNGN / rate)),
       }))
     );
+    if (isCloudAdmin) {
+      void saveShowroomPublicToDb(next);
+    }
   };
 
   const handleResetDemoData = () => {
@@ -662,6 +851,48 @@ export default function App() {
     setActiveBikeId(MOTORCYCLES[0].id);
     setSelectedBrand('All');
     setSelectedCategory('All');
+    if (isCloudAdmin) {
+      void seedCatalogToDb(MOTORCYCLES, SPARE_PARTS, DEFAULT_SHOWROOM_SETTINGS);
+    }
+  };
+
+  const handleGoogleAdminSignIn = async (): Promise<{
+    ok: boolean;
+    error?: string;
+  }> => {
+    try {
+      const cred = await signInWithGoogle();
+      const status = await checkIsCloudAdmin(
+        cred.user.uid,
+        cred.user.email,
+        cred.user.emailVerified
+      );
+      if (status.isAdmin) {
+        setIsCloudAdmin(true);
+        setIsBootstrappedAdmin(status.isBootstrapped);
+        return { ok: true };
+      }
+      return {
+        ok: false,
+        error: `Signed in as ${cred.user.email || 'user'}, which does not have Dealer Admin permissions.`,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        error:
+          err instanceof Error
+            ? err.message
+            : 'Google Sign-In was cancelled or blocked.',
+      };
+    }
+  };
+
+  const handleCustomerGoogleSignIn = async () => {
+    try {
+      await signInWithGoogle();
+    } catch {
+      // ignore cancelled popup
+    }
   };
 
   const totalCartCount = cartItems.reduce(
@@ -830,7 +1061,12 @@ export default function App() {
         onOpenInquiry={(topic, title) =>
           setInquiryState({ open: true, topic, title })
         }
-        onSubmitTradeIn={(record) => setTradeIns((prev) => [record, ...prev])}
+        onSubmitTradeIn={(record) => {
+          setTradeIns((prev) => [record, ...prev]);
+          if (authUser && authUser.emailVerified) {
+            void saveTradeInToDb(record);
+          }
+        }}
         tradeIns={tradeIns}
         showroomAddress={settings.showroomAddress}
         whatsappNumber={settings.whatsappNumber}
@@ -845,6 +1081,9 @@ export default function App() {
           <AdminAuthModal
             open={adminAuthOpen}
             expectedPin={settings.adminPin}
+            cloudUserEmail={authUser?.email}
+            isCloudAdmin={isCloudAdmin}
+            onGoogleSignIn={handleGoogleAdminSignIn}
             onClose={() => setAdminAuthOpen(false)}
             onSuccess={() => {
               setAdminAuthOpen(false);
@@ -910,6 +1149,9 @@ export default function App() {
             onCheckoutSuccess={(order) => {
               setOrders((prev) => [order, ...prev]);
               setCartItems([]);
+              if (authUser && authUser.emailVerified) {
+                void saveOrderToDb(order);
+              }
             }}
           />
         </Suspense>
@@ -928,8 +1170,18 @@ export default function App() {
               setOrderBike(null);
               setAppliedPlan(null);
             }}
-            onConfirmOrder={(order) => setOrders((prev) => [order, ...prev])}
-            onConfirmTestRide={(ride) => setTestRides((prev) => [ride, ...prev])}
+            onConfirmOrder={(order) => {
+              setOrders((prev) => [order, ...prev]);
+              if (authUser && authUser.emailVerified) {
+                void saveOrderToDb(order);
+              }
+            }}
+            onConfirmTestRide={(ride) => {
+              setTestRides((prev) => [ride, ...prev]);
+              if (authUser && authUser.emailVerified) {
+                void saveTestRideToDb(ride);
+              }
+            }}
           />
         </Suspense>
       )}
@@ -964,6 +1216,17 @@ export default function App() {
             currency={currency}
             onToggleCurrency={setCurrency}
             onSelectSavedBike={handleLoadOnStage}
+            authUser={
+              authUser
+                ? {
+                    uid: authUser.uid,
+                    email: authUser.email,
+                    displayName: authUser.displayName,
+                  }
+                : null
+            }
+            onSignInGoogle={handleCustomerGoogleSignIn}
+            onSignOut={() => void signOutFirebase()}
           />
         </Suspense>
       )}
